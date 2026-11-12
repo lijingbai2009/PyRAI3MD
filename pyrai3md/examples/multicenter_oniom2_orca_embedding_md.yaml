@@ -1,0 +1,53 @@
+# Multi-center ONIOM2 point-charge embedding under MD: two ORCA DFT water
+# centers in each other's HF charges (PySCF outer), three NVE steps.
+# Topology: Dispatcher local / Workflow single / Calculator composite (5 tasks)
+# Run: pyrai3md multicenter_oniom2_orca_embedding_md.yaml
+#
+# Each evaluation re-derives the outer charge row, so the recorded Etot is
+# judged as an embedded composite (runner._embedding_breaks_conservation).
+
+control:
+  title: multicenter_oniom2_orca_embedding_md_example
+  jobtype: md
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+  gl_seed: 20261105
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.0, 1.0, 1.0]
+  - [2.0, 1.0, 1.0]
+  - [1.0, 2.0, 1.0]
+  - [5.0, 5.0, 5.0]
+  - [6.0, 5.0, 5.0]
+  - [5.0, 6.0, 5.0]
+
+molecule:
+  charges: "0; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "1; 1"
+  spin: "0; 0"
+  highlevel: [[1, 2, 3], [4, 5, 6]]
+  embedding: true
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 3
+  size: 20.67
+  direct: 1
+  buffer: 1
+  randvelo: 1
+  temperature: 100
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

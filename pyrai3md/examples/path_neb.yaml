@@ -1,0 +1,58 @@
+# Nudged elastic band between the HCN and HNC minima
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb.yaml
+#
+# What this example is for. `optimize.method: neb` relaxes a chain of images
+# between two structures the input names as files. Every round evaluates all the
+# images as one batch (`dispatch(units=...)`, so the images run in parallel under
+# `multipool` and each gets its own runtime directory) and moves them by the FIRE
+# integrator under the literature's band force: an energy-weighted tangent, a
+# parallel spring, and the physical force perpendicular to the tangent only.
+#
+# The endpoints are the two minima in `path_reactant.xyz` and `path_product.xyz`,
+# both relaxed to HF/STO-3G-consistent geometries on this checkout
+# (-92.8840230911 and -92.8662400554 Ha). The interior images come from a linear
+# Cartesian interpolation, which for this reaction is a bad guess: the straight
+# line takes the migrating hydrogen through the C-N region, and the initial
+# profile carries an absurd barrier. `path_neb_geodesic.yaml` is the same band
+# built from the internal-coordinate geodesic instead, and the two profiles are
+# the point of having both.
+#
+# `maxit` is small on purpose: a band that has not settled reports
+# `[NOT CONVERGED]` through the same step-bound phrase a truncated relaxation
+# does, which is the functional-test posture the rest of the shipped examples use.
+#
+# What it needs from the host: PySCF (five images per round).
+
+control:
+  title: path_neb
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 5
+  neb_reactant: path_reactant.xyz
+  neb_product: path_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [0.000000000, 0.000000000, 1.055827000]
+  - [0.000000000, 0.000000000, -0.010776000]
+  - [0.000000000, 0.000000000, -1.145051000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

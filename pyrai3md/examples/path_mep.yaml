@@ -1,0 +1,53 @@
+# Minimum energy path, walked downhill into the HCN basin
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_mep.yaml
+#
+# What this example is for. `optimize.method: mep` walks a minimum energy path one
+# point at a time: each point is a constrained minimization on the sphere of
+# `path_radius` Bohr (normalised mass-weighted coordinates) centred on the point
+# before it, and the sphere is re-centred on every accepted point. The profile
+# `path_profile.txt` is the walk itself - index, energy, the change, the arc
+# length, and the residual that says whether the point is a constrained minimum.
+#
+# Where the starting geometry comes from. It is the first displaced point of
+# `path_irc_mode.yaml`'s walk, written out here so this run has a direction to
+# leave on. A path walked from a stationary point has none - the gradient is zero
+# - and stops saying so; `irc` is the method that supplies a direction (one
+# `path_radius` along the imaginary mode of a saddle). Measured on this
+# checkout with PySCF HF/STO-3G: four points, -91.5757483501 -> -91.6734005525,
+# 41 evaluations, and the walk stops when the next point climbs - which is how a
+# steepest-descent path reports that it has arrived.
+#
+# The other arm is path_mep_relu.yaml (`path_constraint: relu`).
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_mep
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 8
+  path_radius: 0.15
+  path_inner_maxit: 12
+  path_constraint: sphere
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.174177304, 0.000000000, -0.007583040]
+  - [0.045975463, 0.000000000, 0.002049630]
+  - [-0.044762048, 0.000000000, 1.262686200]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

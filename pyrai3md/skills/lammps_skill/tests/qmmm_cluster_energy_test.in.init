@@ -1,0 +1,8 @@
+units real
+atom_style full
+boundary f f f
+bond_style harmonic
+angle_style harmonic
+pair_style lj/cut/coul/cut 9.0
+pair_modify mix arithmetic
+special_bonds amber

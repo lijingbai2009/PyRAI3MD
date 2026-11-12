@@ -1,0 +1,188 @@
+"""
+======================================================================
+This is a standalone OpenQP calculation skill
+designed for AI agent orchestration,
+
+It provides modular interfaces for workflow-driven AI system,
+and supports for programmatic invocation,
+capatible in subprocess and slurm execution environments
+
+Aug 10 2026
+By Jingbai Li
+
+Hoffmann Institute of Advanced Materials
+Shenzhen Polytechnic University
+======================================================================
+
+This module provides the adapter functions for the OpenQP skill,
+which include the functions to build and process the config.
+
+"""
+
+import json
+from typing import Any
+from pydantic import BaseModel
+
+from .config import (SkillConfig, Config, _normalize_shell,
+                     FIELD_TO_SUBMODEL, SUBMODEL_CLASSES)
+
+
+# Retired compute-resource spellings (#306). `thread` is what a
+# standalone input writes and what this skill reads; `openqp_thread` is
+# what the framework forwards from the openqp section. `openqp_nproc` is
+# the only rank-count spelling this skill takes (#427).
+#
+# `hess_thread` and `nac_thread` (#147) join the list at #426. They wrote
+# `[hess]nproc` / `[nac]nproc`, and OpenQP reads those only when the run is
+# not under MPI (`_displacement_pool`: `min(ntask, comm.size)` on the MPI
+# branch, `min(ntask, nproc)` otherwise) -- so under a launcher that starts
+# ranks, the deck value was silently not the worker count. One knob per
+# question now: the rank count is `openqp_nproc`, the OpenMP threads
+# per rank are `thread`/`openqp_thread`, and neither is written into the deck.
+# They are refused by name rather than filtered away, because the framework
+# forwards `&openqp` keys without checking them against a table: this skill is
+# the only place a retired keyword can still be reported.
+RETIRED_RESOURCES = {
+    'num_thread': ('`thread` (standalone) or `openqp_thread` (the openqp skill '
+                   'section); the framework keeps no run-wide thread '
+                   'setting'),
+    'nproc': '`openqp_nproc` -- one key for the rank count, so the number '
+             'a run sets is the number `mpirun -n` starts',
+    'mpi_nproc': '`openqp_nproc` (the openqp skill section)',
+    'hess_thread': '`openqp_nproc` for the MPI ranks that run the displaced '
+                   'gradients (one rank per displacement) and `openqp_thread` '
+                   'for the OpenMP threads each rank gets; the numerical '
+                   "Hessian's worker count is no longer a deck setting",
+    'nac_thread': '`openqp_nproc` for the MPI ranks that run the displaced '
+                  'gradients and `openqp_thread` for the OpenMP threads per '
+                  'rank; the NAC-vector worker count is no longer a deck '
+                  'setting',
+}
+
+
+def reject_retired_resources(raw_dict):
+    """Refuse a retired compute-resource spelling.
+
+    Parameters
+    ----------
+    raw_dict : dict
+        Raw skill configuration before the schema filter.
+
+    Raises
+    ------
+    ValueError
+        When a retired keyword carries a value.
+    """
+    for retired, replacement in sorted(RETIRED_RESOURCES.items()):
+        if raw_dict.get(retired) is not None:
+            raise ValueError(
+                "openqp_skill: `%s` is retired; write %s instead"
+                % (retired, replacement))
+
+
+def read_json(filename: str) -> dict:
+    """Read configuration from a JSON file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the JSON file.
+
+    Returns
+    -------
+    dict
+        Parsed configuration dictionary.
+    """
+    with open(filename, 'r') as f:
+        return json.load(f)
+
+
+def build_config(raw_config: Any) -> SkillConfig:
+    """Build nested SkillConfig from raw input dict or model.
+
+    Flat dict inputs are auto-routed to the appropriate submodels
+    via FIELD_TO_SUBMODEL (aligned with PyRAIConfig pattern).
+
+    Parameters
+    ----------
+    raw_config : Any
+        Raw configuration input, can be a dict or BaseModel.
+
+    Returns
+    -------
+    SkillConfig
+        Nested skill configuration model.
+    """
+    if isinstance(raw_config, BaseModel):
+        raw_dict = raw_config.model_dump()
+    elif isinstance(raw_config, dict):
+        raw_dict = raw_config
+    else:
+        raise TypeError("Unsupported raw_config type")
+
+    # Agent JSON configs may carry nested submodel sections (e.g.
+    # {'system': {'current_state': 1}} written by the dev_tool);
+    # flatten them so the flat-field routing below picks them up.
+    for _section_name in SUBMODEL_CLASSES:
+        _section = raw_dict.get(_section_name)
+        if isinstance(_section, dict):
+            raw_dict = {**raw_dict, **_section}
+
+    # Framework spelling alias: the merged flat dict carries the
+    # framework dynamics keyword 'nactype' (ktdc/dcm/nac); the skill
+    # field is 'nac_type'. Fill-if-absent so an explicit skill-level
+    # nac_type always wins (skill-side normalize owns multi-spelling
+    # input, per the framework/skill contract).
+    if raw_dict.get('nactype') and not raw_dict.get('nac_type'):
+        raw_dict['nac_type'] = raw_dict['nactype']
+
+    # Same pattern for the SCF converger: `scf_converger` is the cross-skill
+    # spelling this project reserved for it, `converger_type` is what OpenQP
+    # calls the keyword in its own [scf] section, and an input written from
+    # the engine documentation should be accepted as it is spelled there.
+    if raw_dict.get('converger_type') and not raw_dict.get('scf_converger'):
+        raw_dict['scf_converger'] = raw_dict['converger_type']
+
+    # Retired spellings are refused instead of dropped (#306).
+    reject_retired_resources(raw_dict)
+
+    # Filter to known schema fields only
+    valid_fields = FIELD_TO_SUBMODEL.keys()
+    filtered = {k: v for k, v in raw_dict.items() if k in valid_fields}
+
+    # Map skill-specific project name to the canonical
+    # Calculation.project field.  The input format (converter /
+    # classic .input) writes ``openqp_project`` which lives in
+    # Environment; the framework does not forward Environment to
+    # the skill config, so we copy it here.
+    if 'openqp_project' in raw_dict and raw_dict['openqp_project']:
+        filtered['project'] = raw_dict['openqp_project']
+
+    # Fill empty/missing fields with schema non-empty defaults.
+    # An explicit False on a bool switch (e.g. use_mpi)
+    # is kept so it is not silently overwritten by its default.
+    for field_name, parent_name in FIELD_TO_SUBMODEL.items():
+        sub_cls = SUBMODEL_CLASSES[parent_name]
+        field_info = sub_cls.model_fields[field_name]
+        empty = field_name not in filtered or (
+            not filtered[field_name]
+            and not isinstance(field_info.default, bool)
+        )
+        if empty:
+            default = field_info.default
+            if default is not None and default != '' and default != []:
+                filtered[field_name] = default
+
+    # Normalize shell commands (yaml list / ';' separators) before
+    # the string field validation.
+    if 'shell' in filtered:
+        filtered['shell'] = _normalize_shell(filtered['shell'])
+
+    # Keep Environment.openqp_project in sync with
+    # Calculation.project (single source of truth).
+    filtered['openqp_project'] = filtered['project']
+
+    # SkillConfig.__init__ auto-routes flat kwarg to submodels
+    return SkillConfig(**filtered)
+
+

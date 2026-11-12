@@ -1,0 +1,62 @@
+# Nudged elastic band with one atom frozen
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb_freeze.yaml
+#
+# `fix_atoms` on a band: the nitrogen is held where the band found it, so the
+# migrating hydrogen moves between the two heavy atoms while the heavy frame
+# stays put. The two endpoint files carry the N at the same point
+# (`path_bond_reactant.xyz` / `path_bond_product.xyz`), which is the geometry
+# `path_neb_bond.yaml` walks with a held C-N instead - the two files differ in
+# which condition they declare.
+#
+# What a frozen atom means here: the anchor is bound once from the initial
+# geometry, every interior image is restored to it before each round and after
+# each FIRE step (`pathbase.py::_land_images` -> `constraints/runtime.py::
+# constrain_state`), and that atom's three Cartesian components are masked out
+# of the force the band relaxes with. The endpoints are the band's boundary
+# conditions and are never landed, which is why their frozen atom has to be the
+# same point in both files for the whole record to be constant.
+#
+# Functional test: `maxit` is the budget, not a convergence claim. What it
+# asserts is that the frozen atom does not move on any committed image, which
+# `tools/verify.py` section F recomputes from `path_geom.xyz`.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_neb_freeze
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_bond_reactant.xyz
+  neb_product: path_bond_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [0.000000000, 0.000000000, 1.055827000]
+  - [0.000000000, 0.000000000, -0.010776000]
+  - [0.000000000, 0.000000000, -1.145051000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_length: angstrom
+  fix_atoms: 3
+  fix_id: hold_n
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

@@ -1,0 +1,83 @@
+version: 1.0
+name: casscf_espf_prop_test
+input:
+  atoms:
+  - C
+  - C
+  - H
+  - H
+  - H
+  - H
+  coordinates:
+  - - -1.12019105
+    - 0.0
+    - -2.661941306
+  - - -1.12019105
+    - 0.0
+    - -1.331783306
+  - - -1.12019105
+    - 0.923341
+    - -3.234891306
+  - - -1.12019105
+    - -0.923341
+    - -3.234891306
+  - - -2.04353205
+    - 0.0
+    - -0.758833306
+  - - -0.19685005
+    - 0.0
+    - -0.758833306
+  charges: 0
+  multiplicity: 1
+  nstate: 4
+  state_spin:
+  - 0
+  - 0
+  - 2
+  - 2
+  coupling:
+  - - 0
+    - 1
+  - - 0
+    - 2
+  - - 0
+    - 3
+  - - 1
+    - 2
+  - - 1
+    - 3
+  - - 2
+    - 3
+  target_states:
+  - 2
+  jobtype: energy gradient nac soc
+  profile: casscf_properties
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 3
+  inactive_orb: 7
+  nocsf: true
+  external_charges:
+  # [q, x, y, z] in e / Angstrom. Two points of opposite sign, so the
+  # background is neutral and the file carries more than one row.
+  - [1.0, 0.0, 0.0, 5.0]
+  - [-1.0, 0.0, 0.0, -5.0]
+  execution_mode: local
+expected:
+  energy:
+    value: null
+    tolerance: 1.0e-06
+  gradient:
+    shape:
+    - 4
+    - 6
+    - 3
+  nac:
+    shape:
+    - 2
+    - 6
+    - 3
+  soc:
+    shape:
+    - 4

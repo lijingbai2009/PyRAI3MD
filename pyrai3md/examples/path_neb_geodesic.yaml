@@ -1,0 +1,60 @@
+# Nudged elastic band built from the internal-coordinate geodesic
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb_geodesic.yaml
+#
+# path_neb.yaml with `neb_interpolate: geodesic`: the interior images are placed
+# by minimising the path length in a Morse-scaled redundant-internal-coordinate
+# metric, which is a port of the MIT-licensed `geodesic-interpolate` package into
+# `utilities/geodesic.py` (see the module header for the attribution and for the
+# six places the port differs from it).
+#
+# Why this arm matters for this reaction: a linear Cartesian interpolation
+# between HCN and HNC takes the migrating hydrogen straight through the C-N
+# region, so the band starts with an absurd barrier. Measured on this checkout
+# with PySCF HF/STO-3G and four interior images, the geodesic arm starts with
+# every image between -92.79 and -92.88 Ha while the linear arm's middle image
+# sits at -79.4 Ha. The barrier the band then relaxes is a property of the
+# initial guess, not of the reaction.
+#
+# The three `neb_geodesic_*` keys are the metric: the pair cutoff radius, the
+# Morse stiffness, and the minimum coordination per atom. Only the direction of a
+# mode matters to a seed, so the readers' disagreement about normalisation
+# (`utilities/geodesic.py`'s header) does not reach the geometry.
+#
+# What it needs from the host: PySCF (six images per round).
+
+control:
+  title: path_neb_geodesic
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 3
+  neb_reactant: path_reactant.xyz
+  neb_product: path_product.xyz
+  neb_images: 4
+  neb_interpolate: geodesic
+  neb_geodesic_threshold: 3.0
+  neb_geodesic_scaler: 1.7
+  neb_geodesic_min_neighbors: 4
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [0.000000000, 0.000000000, 1.055827000]
+  - [0.000000000, 0.000000000, -0.010776000]
+  - [0.000000000, 0.000000000, -1.145051000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

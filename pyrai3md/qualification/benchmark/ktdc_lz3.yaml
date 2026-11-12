@@ -1,0 +1,156 @@
+# =====================================================================
+# Dedicated kTDC benchmark case for the half-linear Landau-Zener
+# crossing model with a flat LOWER surface (flat benchmark layout:
+# served by the benchmark/ktdc.py task module; the dedicated name
+# ktdc_lz3.yaml takes precedence over the unified ktdc.yaml whenever
+# the pmd_env entry selects method lz3).
+#
+# This case mirrors the fssh_lz3 calibration entry for entry
+# (identical initial conditions, model parameters and pins): the
+# production md input is the identical fewest-switches surface
+# hopping setup, with the single difference isolated by the
+# calibration -- nactype ktdc replaces nactype nac, so the hopping
+# coupling comes from the energy-only kTDC curvature formula
+# instead of the exact qdm transition gradients.
+#
+# The lz family shares the physical setup of the corresponding
+# gsh_lz3 calibration verbatim (identical initial conditions and
+# model parameters), so the surface-hopping algorithms are
+# compared on the same problem. The model satisfies the premises of
+# the analytic single-passage hopping statistics exactly:
+#
+#   V11 =  lz_a * x,   V22 = 0,   V12 = lz_b (constant)
+#   dH/dx = [[lz_a, 0], [0, 0]]              (constant slopes)
+#
+# The slope difference at the crossing is |F1 - F2| = lz_a (half
+# of lz1), so the single-passage Landau-Zener exponent doubles at
+# equal crossing velocity: P = exp(-2*pi*lz_b^2/(lz_a*v_c)).
+#
+# Parameter set (middle-probability case, dt = 20 au fixed),
+# identical to gsh_lz3 / fssh_lz3:
+#
+#   lz_a = 0.2712 H/Bohr, lz_b = 0.0543 H (2*lz_b = 2.95 eV),
+#   x0 = -4.4157 Bohr, v0 = 0.07762 Bohr/au, model_mass = 2000 au,
+#   nstep = 45.
+#
+# The approach side climbs the sloped branch exactly like lz1
+# (v0 = 0.0776 decelerates to v_c ~ 0.0699), giving the single-
+# passage Landau-Zener probability P ~ 0.38. The gap threshold is
+# pinned to 3.5 eV, above the gap minimum 2*lz_b = 2.95 eV. Beyond
+# the crossing the lower adiabatic surface flattens out (E_lower ->
+# 0^- as x -> +inf): the non-hopping trajectories coast at constant
+# velocity instead of running away on a descending surface, so the
+# lz1 nstep window is comfortable here (final x ~ 58 Bohr, well
+# inside the fixed reference grid window [-30, +80] Bohr).
+# Trajectories that hop onto the upper surface climb the +lz_a
+# slope and may turn back (frustrated-hop territory), staying
+# inside the window too.
+#
+# The wavepacket momentum k0 = m*v0 ~ 155 au sits above the
+# Nyquist bound of the lz1 ngrid = 4096 grid (pi/dx ~ 117), so the
+# reference doubles the grid to ngrid = 8192 (pi/dx ~ 234).
+#
+# The fssh-specific pins follow the unified ktdc.yaml verdicts:
+# deco = '0.1', rk4 = '1'; nactype = ktdc is the calibration
+# difference (energy-only curvature coupling, see ktdc_lz1.yaml).
+#
+# Metrics: the unified final-state metric set judges the final
+# state population against the wavepacket reference
+# (state_reference_difference) and the analytic single-passage
+# Landau-Zener probability (state_analytical_difference); the
+# steep linear slopes make the exact reference re-cross the
+# interaction region (multi-passage oscillations the single-passage
+# hopping model is not designed to reproduce), so the analytic
+# comparison target anchors the verdict. kTDC carries no kernel
+# replay, so the internal hopping probability of the gsh/lzsh lz
+# cases is not computed here.
+#
+# Sep 2 2026
+# By Jingbai Li
+# Hoffmann Institute of Advanced Materials, Shenzhen Polytechnic Univ.
+# =====================================================================
+
+case: ktdc_lz3
+description: >-
+  kTDC (energy-only curvature coupling) calibration on the
+  half-linear Landau-Zener crossing model with a flat lower surface
+  (constant diabatic slopes, constant coupling), shared physical
+  setup with the fssh_lz3 and gsh_lz3 cases: the trajectory
+  ensemble final population Bernoulli statistic is scored against
+  the analytic single-passage Landau-Zener probability.
+
+production:
+  method: lz3            # half-linear Landau-Zener model, flat
+                         # lower surface (dedicated case file)
+  lz_a: 0.2712           # sloped diabatic surface slope
+                         # (Hartree/Bohr); pinned here, forwarded
+                         # into both the production and the
+                         # reference qdm sections
+  lz_b: 0.0543           # constant coupling (Hartree); gap minimum
+                         # 2*lz_b = 2.95 eV
+  ninitcond: 100         # standard benchmark: 100-trajectory ensemble
+                         # (binomial noise of the final S1 fraction:
+                         # sigma ~ 0.048 at p ~ 0.38)
+  ncpus: 4               # multitask pool size for the trajectories
+                         # (mapped to the md-section multipool keyword)
+  deco: '0.1'            # decoherence correction (see ktdc.yaml):
+                         # collapses the residual coherence of the
+                         # never-hopping trajectories into pure 0/1
+                         # final states; pmd_env benchmark entries
+                         # take priority over this template pin
+  nstep: 45              # md steps per trajectory (T = 900 au); the
+                         # flat lower far side coasts at constant
+                         # velocity, so the lz1 window stays inside
+                         # the reference grid (final x ~ 58 Bohr)
+  dt: 20                 # md time step (au, ~0.5 fs)
+  substep: 500           # electronic substeps per md step (delt = dt/substep
+                         # = 0.04 au): the RK4 coherence rotation is stable
+                         # only for gap*delt <= ~2.83 Hartree and the linear
+                         # LZ gap 2*lz_a*|x| is unbounded -- the schema
+                         # default substep 20 (delt 1 au) diverges once the
+                         # post-crossing runaway passes |x| ~ 5.2 Bohr and
+                         # floods the population records with NaN; 500
+                         # substeps keep gap*delt < 1.7 up to |x| ~ 130 Bohr
+  sfhp: fssh
+  rk4: '1'               # electronic density propagation by RK4
+                         # (pinned, see ktdc.yaml): forward Euler
+                         # diverges on the coherence rotation at the
+                         # 2.95 eV gap
+  nactype: ktdc          # md-schema keyword: the kTDC energy-only
+                         # curvature coupling replaces the exact qdm
+                         # transition gradients (the single
+                         # difference against the fssh_lz3 case)
+  gap: 3.5               # IC gap threshold (eV): explicitly pinned
+                         # above the gap minimum 2*lz_b (2.95 eV) so
+                         # the crossing passes the gap gate; the
+                         # schema default 0.5 eV would reject it
+  x0: -4.4157            # initial coordinate (Bohr); benchmark-only
+                         # unit convention (regular inputs take
+                         # Angstrom)
+  v0: 0.07762            # initial velocity (Bohr/au); the climb to
+                         # the crossing leaves v_c ~ 0.0699 giving
+                         # P_LZ ~ 0.38
+  sigma: 0.5             # packet width (Bohr)
+  model_mass: 2000.0     # model mass (au)
+  initial_state: 0       # initially populated adiabatic state
+
+reference:
+  ngrid: 8192            # split-operator grid points (fixed default
+                         # window [-30, +80] Bohr); dx = 0.0134 Bohr
+                         # keeps the packet momentum k0 = m*v0 ~ 155 au
+                         # below the Nyquist bound pi/dx ~ 234 (4096
+                         # aliases the momentum and reverses the
+                         # reference propagation)
+  substeps: 10           # inner reference steps per md step
+
+metrics:
+  # Unified final-state metric set: the judged differences compare
+  # the ensemble-averaged final S1 population against the wavepacket
+  # reference and the analytic single-passage Landau-Zener
+  # probability.
+  state_reference_difference:
+    tolerance: 0.2573    # calibrated 2026-09-03: 110% of the observed
+                         # deviation (0.2339)
+  state_analytical_difference:
+    tolerance: 0.2597    # calibrated 2026-09-03: 110% of the observed
+                         # deviation (0.2361)

@@ -1,0 +1,52 @@
+# Minimum energy path with a held angle
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_mep_angle.yaml
+#
+# Path with a held angle instead of a held bond: the H-O-H angle of a stretched
+# water is fixed for the whole walk. The start has one O-H stretched to 1.15 A,
+# so the walk has a gradient to leave on, and holding the angle makes the other
+# hydrogen move as the first one comes back - which is what a held angular
+# condition means on a path.
+#
+# The condition machinery is the framework's own: the position solve runs on
+# every probe (`constraints/runtime.constrain_state`) and the tangential split
+# judges the criteria (`constraint_split`). What to read: `path_geom.xyz` - every
+# frame's H-O-H is the first frame's, to the solve's tolerance.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_mep_angle
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 6
+  path_radius: 0.12
+  path_inner_maxit: 12
+  path_constraint: sphere
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [1.150000000, 0.000000000, 0.000000000]
+  - [-0.239900000, 0.927100000, 0.000000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_angle: degree
+  shake_angle: [[2, 1, 3]]
+  shake_tol: [1e-10]
+  shake_id: [hoh]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

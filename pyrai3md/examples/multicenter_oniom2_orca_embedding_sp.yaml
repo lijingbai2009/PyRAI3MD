@@ -1,0 +1,44 @@
+# Multi-center ONIOM2 point-charge embedding: two water centers, each ORCA
+# DFT model embedded in the HF charges of the other (PySCF outer on the
+# whole system).
+# Topology: Dispatcher local / Workflow single / Calculator composite (5 tasks)
+# Run: pyrai3md multicenter_oniom2_orca_embedding_sp.yaml
+#
+# Each center's environment is every atom outside its own highlevel, so
+# center 1's point-charge file carries center 2's three atoms (with the
+# L(real) low-level charges), and the reverse. No cross-center charge
+# iteration: one evaluation's outer row fills both environments.
+
+control:
+  title: multicenter_oniom2_orca_embedding_sp_example
+  jobtype: energy gradient
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.0, 1.0, 1.0]
+  - [2.0, 1.0, 1.0]
+  - [1.0, 2.0, 1.0]
+  - [5.0, 5.0, 5.0]
+  - [6.0, 5.0, 5.0]
+  - [5.0, 6.0, 5.0]
+
+molecule:
+  charges: "0; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "1; 1"
+  spin: "0; 0"
+  highlevel: [[1, 2, 3], [4, 5, 6]]
+  embedding: true
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

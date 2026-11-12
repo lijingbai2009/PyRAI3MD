@@ -1,0 +1,273 @@
+# Variable-cell relaxation under an applied pressure, on the box that can take
+# the step: the acceptance vehicle for `opt_pressure` with a shape-preserving
+# scale.
+#
+# Run: pyrai3md optimize_cell_pressure.yaml
+#
+# The engine is unchanged (GFN-FF, xtb 6.7.1's only periodic stress producer, the
+# load read in bar and converted with the helper the NPT barostats use,
+# tensile-positive sign convention, `opt_cell_coupling: isotropic`). What changed
+# is the carrier, then the load. This file used to run on the 10 A
+# ethylene cube of `optimize_cell_xtb.yaml`, and rounds `tmp_20261018_141444` and
+# `tmp_20261018_173454` read the same way on it, one bar pair apart: the endpoint
+# residual stayed 987.45141829 bar, the volume went 1000.000000 -> 1000.074059
+# A^3, `Converged: False`. The second of those two rounds carried #381's `pV`
+# term and the first did not, and their verdict lines differ in nothing but the
+# thresholds they were compared against. The reason is a magnitude, read off the same records: the one
+# accepted lattice step moved the box by +0.073764 A^3, worth p*dV = +1.692e-5
+# Hartree against that step's dE of -7.929e-4 Hartree (47 times smaller), and the
+# two largest energy changes of the run came with dV exactly zero. On a box that
+# stiff at 1 kbar the enthalpy term is not the thing deciding step acceptance, so
+# no amount of getting it right moves this leg.
+#
+# What round 17 measured on this carrier (`tmp_20261018_200317`) retired the
+# other half of that story. The box still grew - 1157.625 -> 1173.837737 A^3 over
+# five steps - and the reason turned out not to be stiffness. This box's own
+# stress at the end of the zero-pressure run on it measures |sigma| = 1688.1 bar
+# of compression, so its rest point `sigma = -p I` lies at a LARGER volume than
+# the one it starts from, and a run that expands is a run pointing the right way;
+# the residual agrees, 11518.1 bar at the first recorded step and 653.4 bar at the
+# last. Ask 2 therefore reads direction from those two facts now (#391): the
+# residual has to come down from first step to last, and where the round holds a
+# unique zero-pressure twin of this box, same optimizer and coupling, the drift
+# under load has to be smaller than the drift the box makes unloaded. The load
+# itself went from 1 kbar to 1700 bar, because that is where the numbers above
+# place this box's rest point - a prediction read off round 17's endpoint, not a
+# measurement of a 1700 bar run. That prediction has now been run: round
+# `tmp_20261019_122659` carries this file at 1700 bar, and its residual falls
+# 10818.074 -> 181.527 bar while the box grows 1157.625 -> 1172.8207 A^3. That
+# is the direction the endpoint of round 17 predicted and one recorded step
+# within 181.5 bar of the load's own rest point; it is not a measurement that
+# 1700 bar is that rest point, which would need a step to stop on. The
+# paragraph below says what the last of these five steps does instead.
+#
+# The carrier is the box #382/#388 built for the DIIS and crossing arms: one
+# ethylene inside 25 waters in a 10.5 A cube, 81 atoms, Packmol 21.2.1 with a
+# 2.3 A intermolecular exclusion (26 connected components under periodic
+# perception, closest intermolecular contact 2.518 A, density 0.654 g/cm3). It is
+# chosen on a measurement, not a hope: on round `tmp_20261018_141444` this box,
+# at zero pressure and anisotropic coupling, moved 17.087668 A^3 in five steps.
+# Its pV at 1 kbar is 0.265526 Hartree at 1157.625 A^3, so a one-angstrom-cubed
+# step is worth 3.4e-4 Hartree, the order the trust-region ratio actually
+# compares. Paired with `optimize_cell_pressure_aniso.yaml` (#388) it differs by
+# one keyword, `opt_cell_coupling`, and that difference is what the two runs are
+# there to show.
+#
+# What this case has to show, all of it read off the framework's own products.
+# The post-run judge (`qualification/runner.py::_check_cell_pressure`, #371) asks
+# these four, and reports the numbers either way:
+#
+#   1. the run's own progress block carries an `External Pressure` row equal to
+#      the `opt_pressure` this file declares. This is the check that a
+#      `cell_gmax` cannot be: the recorded lattice force is the residual of
+#      `sigma + p I` in either case, so a search that ignored the keyword leaves
+#      a perfectly sane-looking row - which is the shape of every defect this
+#      round has had to chase;
+#   2. the box moves toward its rest point: the residual of `sigma + p I` has to
+#      come down from the first recorded step to the last, and - against the
+#      round's unique zero-pressure twin of this box, same optimizer and coupling,
+#      when it has one - the drift under load has to be smaller than the drift the
+#      box makes on its own. Direction is not read off the sign of `opt_pressure`:
+#      the paragraph above says why a correct run here expands;
+#   3. the endpoint residual is under the pair of bar thresholds below,
+#      and 4. the run says Converged: True - both READ AND PRINTED, NOT
+#      JUDGED (the user's ruling of 2026-10-19, because this file is a
+#      functional test at `maxit` 5). Two measurements say what judging
+#      them at this budget would actually judge. On the one periodic
+#      engine installed on the development machine (LAMMPS, the
+#      1575-atom `water25` box, same coupling, 2000 bar, 25 steps) the
+#      residual fell 21076.0 -> 1058.4 bar and no further: its lowest
+#      reading is the second-to-last step, the last step rebounds to
+#      3730.2, and the enthalpy is still dropping 0.096 Hartree a step,
+#      so the band is not what a longer budget approaches - the run has
+#      not arrived. On this file's own carrier the low point is a
+#      crossing rather than a rest: round `tmp_20261019_122659` records
+#      181.5 bar at 1168.8679 A^3, the two steps either side put the
+#      rest point 0.49 A^3 further along (an interpolation of recorded
+#      readings at 288.0 bar per A^3, not a measurement), and the step
+#      the run then took was 3.95 A^3 - eight times the distance left to
+#      travel. What decides how fast a run approaches the band is the step
+#      size, and the step size is the trust radius
+#      (`workflow/optimizer/minima.py:108`, initial 0.3 Bohr) - a keyword
+#      since #396, `opt_trust_radius`, which this file deliberately leaves
+#      unset. What the keyword was measured to do, on the one carrier this
+#      host can run (LAMMPS, the 1575-atom `water25` box, same coupling,
+#      2000 bar, 100/100, 15 steps, `trust_radius: 0.1`): the residual floor
+#      improved from 1058.4 bar to 220.189 bar, the resizing still hit its
+#      0.5 Bohr ceiling within three steps, the band was still not entered,
+#      and with the radius collapsed to 0.03125 the last two frames sat at
+#      249.7 and 236.5 bar on a volume frozen at 15696.7969 A^3. So the step
+#      bound decides the approach, while the floor belongs to the carrier -
+#      this box's energy is not a smooth function of its own cell, the fact
+#      the LAMMPS skill document records. Naming a converged pressurised
+#      relaxation therefore means the carrier that passed through 181.5 bar
+#      between two frames, which needs the engine this environment does not have.
+#
+# One number answers 3 and 4 together on this coupling, and that is a property of
+# the coupling rather than a shortcut: under `isotropic` the framework reports the
+# mean normal stress for BOTH rows (`optimizer/base.py:533-546`), which is why the
+# two rounds above printed rms and max as the same 987.5 bar at every step. The
+# `[COUPLING]` verdict reads the same row: a shape-preserving run leaves the
+# three lattice row-length ratios where they were, so its `shape_ratio_change`
+# reads an exact 0.0 (measured on both rounds), and that is the floor the
+# anisotropic pair is judged against.
+#
+# What the objective is, and why the row's energy is not an engine's number. The
+# lattice half of the gradient is `V (sigma + p I)^T H^-T`, the derivative of
+# `E + pV`, so the energy the trust-region ratio measures has to carry the same
+# `pV` (`optimizer/base.py::_enthalpy`, #381). It follows that the `Energy:` row
+# of the run log and the `energy` column of `opt_status.txt` are the ENTHALPY on
+# this leg, a number no engine printed - which is why `tools/verify.py` counts a
+# pressure leg as an objective (`pressurized`) and does not compare its column
+# against the engine files it keeps. What #381 does NOT buy is the paragraph
+# above's conclusion: on the cube it changed the numbers by 1e-8 Hartree and
+# changed nothing else, and this carrier is the reply to that, not a consequence
+# of it.
+#
+# `maxit` is 5, the budget every shipped example is held to so a round stays
+# cheap, and the ruling of 2026-10-19 keeps it there: this file is a functional
+# test, so asks 3 and 4 - the bar pair below and the run's own `Converged` line
+# - are read off the last progress block and printed against their thresholds
+# without deciding the verdict. The bar pair is 100/100 by the user's ruling of
+# 2026-10-18, which raised it from the 40/60 that #371 shipped with, and it
+# stays declared here while the carrier changes under it; the strain pair is the
+# schema's own 5e-5 / 7e-5, written out because this leg is judged on it. What
+# still decides pass or fail is ask 1 (the `External Pressure` row reached the
+# search) and ask 2 (the residual comes down, and the drift under load is
+# smaller than the same box's unloaded drift).
+#
+# Round `tmp_20261019_122659`, 251 rows, 244 passed and 4 failed with no
+# errors, `tools/verify.py` clean over the downloaded directory. All four
+# failures were this band and this `Converged` line on the two pressurized
+# legs and their two zero-pressure twins; recomputed under the ruling above
+# they read pass. Ask 2 fired for the first time on that round: this leg
+# paired with its isotropic twin `optimize_cell_iso`, which drifted
+# 17.614350 A^3 with no load on it against 15.195667 A^3 here under 1700.0
+# bar, and `optimize_cell_pressure_aniso` paired with `optimize_cell_aniso`,
+# 17.087668 A^3 unloaded against 14.748035 A^3 under load.
+control:
+  title: optimize_cell_pressure_example
+  jobtype: optimize
+  theory: [xtb]
+
+atoms: [C, C, H, H, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H]
+coordinates:
+  - [5.250000000, 5.250000000, 4.591334000]
+  - [5.250000000, 5.250000000, 5.908666000]
+  - [5.250000000, 6.164369000, 4.024332000]
+  - [5.250000000, 4.335631000, 4.024332000]
+  - [5.250000000, 6.164369000, 6.475668000]
+  - [5.250000000, 4.335631000, 6.475668000]
+  - [5.576084000, 9.855901000, 8.013593000]
+  - [5.416261000, 9.022565000, 8.473883000]
+  - [5.663960000, 10.499206000, 8.727944000]
+  - [3.519230000, 6.339176000, 10.537341000]
+  - [2.746866000, 6.894032000, 10.371664000]
+  - [4.264994000, 6.932725000, 10.384382000]
+  - [0.241396000, 6.732594000, 5.248050000]
+  - [1.195199000, 6.752267000, 5.100629000]
+  - [0.004097000, 5.810166000, 5.090965000]
+  - [0.653619000, 1.091436000, 3.903576000]
+  - [0.003531000, 1.137445000, 4.615706000]
+  - [0.122559000, 1.179630000, 3.102292000]
+  - [4.741443000, 3.027199000, 0.018296000]
+  - [4.768520000, 2.063743000, 0.071953000]
+  - [5.666155000, 3.288102000, 0.111562000]
+  - [2.785103000, 10.081384000, 7.760958000]
+  - [1.907082000, 9.698112000, 7.879460000]
+  - [3.143185000, 10.115505000, 8.656766000]
+  - [3.512016000, 2.101118000, 8.376901000]
+  - [4.055242000, 1.765790000, 7.652801000]
+  - [2.616738000, 2.090025000, 8.016050000]
+  - [5.243747000, 0.563565000, 2.051312000]
+  - [6.154140000, 0.719972000, 2.331636000]
+  - [4.722283000, 1.115577000, 2.647313000]
+  - [0.680217000, 9.226193000, 4.967632000]
+  - [1.439875000, 9.676063000, 5.358011000]
+  - [-0.011032000, 9.322795000, 5.634492000]
+  - [0.791803000, 4.206646000, 7.060103000]
+  - [0.465658000, 3.580132000, 6.402098000]
+  - [-0.003754000, 4.671166000, 7.348496000]
+  - [0.585038000, 3.735724000, 3.166727000]
+  - [0.000923000, 3.568602000, 3.916887000]
+  - [0.014478000, 3.607080000, 2.398761000]
+  - [0.077789000, 1.652059000, 7.986673000]
+  - [0.007548000, 0.844249000, 8.510475000]
+  - [0.144689000, 2.350277000, 8.649904000]
+  - [3.228492000, 6.621731000, 2.572995000]
+  - [3.008842000, 5.743738000, 2.908765000]
+  - [2.742090000, 7.218290000, 3.155568000]
+  - [0.837043000, 8.552024000, 10.433664000]
+  - [1.487267000, 9.262358000, 10.366639000]
+  - [-0.005690000, 9.018128000, 10.500056000]
+  - [3.071398000, 1.216725000, 4.801195000]
+  - [2.536701000, 1.445513000, 5.571659000]
+  - [3.966738000, 1.148496000, 5.155553000]
+  - [3.719572000, 5.241029000, 8.267599000]
+  - [3.273132000, 6.064009000, 8.032533000]
+  - [3.158096000, 4.557245000, 7.881538000]
+  - [3.063256000, 3.903631000, 5.285351000]
+  - [2.802379000, 3.696269000, 4.379369000]
+  - [2.809001000, 4.828852000, 5.391092000]
+  - [3.639429000, 8.202052000, 5.709602000]
+  - [4.395513000, 8.529489000, 6.212575000]
+  - [2.995734000, 7.967705000, 6.389748000]
+  - [5.224017000, 8.792788000, 3.837058000]
+  - [5.328438000, 9.691962000, 4.172383000]
+  - [5.752075000, 8.786673000, 3.028987000]
+  - [0.002743000, 6.903008000, 2.734952000]
+  - [0.556245000, 6.163658000, 2.454139000]
+  - [0.403327000, 7.666883000, 2.301491000]
+  - [0.396804000, 7.262992000, 7.716919000]
+  - [0.920021000, 6.894504000, 8.439637000]
+  - [-0.002164000, 8.053022000, 8.102322000]
+  - [2.351113000, 9.720914000, 2.999909000]
+  - [1.680507000, 9.849043000, 2.317465000]
+  - [3.171284000, 9.624103000, 2.500102000]
+  - [2.889320000, 2.568607000, 1.682894000]
+  - [2.299087000, 3.264237000, 1.367325000]
+  - [2.383237000, 2.138959000, 2.383710000]
+  - [0.742810000, 5.158729000, 0.011901000]
+  - [0.003407000, 5.779314000, 0.016165000]
+  - [0.315691000, 4.293356000, -0.011720000]
+  - [0.839674000, 1.083099000, 0.678483000]
+  - [0.216649000, 1.818287000, 0.621936000]
+  - [1.498930000, 1.288853000, 0.004016000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  cell: [10.5, 10.5, 10.5, 90.0, 90.0, 90.0]
+
+optimize:
+  method: minima
+  maxit: 5
+  opt_energy: 1.0e-4
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+  optimize_cell: true
+  # Named rather than inherited; see the header.
+  opt_cell_coupling: isotropic
+  # The box's own two pairs. The bar pair is the user's ruling of 2026-10-18 and
+  # is not inherited by any other case; the strain pair equals the schema default
+  # (schema/config.py:180-181) and is written out because this leg is judged on
+  # it. The load is 1700 bar, isotropic: 10 kbar came down to 1 kbar after round
+  # tmp_20261017_180206 walked through its target residual at that load and kept
+  # compressing, and it goes back up to 1700 bar because this box measures
+  # |sigma| = 1688.1 bar of compression at the end of its own zero-pressure
+  # relaxation (round tmp_20261018_200317), which is where `sigma = -p I` sits.
+  opt_csrms: 100.0
+  opt_csmax: 100.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+  opt_pressure: 1700.0
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

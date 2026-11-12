@@ -1,0 +1,57 @@
+# Constraint example for the merged constraint subsystem.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Step budget: 6 optimization steps by design, to keep the case cheap; it
+# demonstrates the constrained step path and stops under the gradient gate.
+# Run: pyrai3md constraint_opt_surface.yaml
+#
+# A constrained geometry optimization: the oxygen is frozen, one O-H bond is
+# held at its starting length by SHAKE, and a harmonic bias pulls the other O-H
+# towards 0.95 Angstrom. What the case is for is the C1-6 promise: the relaxed
+# structure must satisfy the constraint it declared, and the energy/gradient
+# pair reported for the final structure must be the pair computed AT it.
+control:
+  title: constraint_opt_surface_example
+  jobtype: optimize
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.157340000]
+  - [0.000000000, 0.857540000, -0.509360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+optimize:
+  method: gdiis
+  maxit: 6
+  opt_energy: 1.0e-5
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  cv_bond: [[1, 3]]
+  cv_name: oh2
+  shake_bond: [[1, 2]]
+  shake_tol: 1e-10
+  shake_id: hold_oh1
+  bias_cv: oh2
+  bias_cv_ref: 0.95
+  bias_cv_fc: 0.02
+  bias_id: pull
+  fix_atoms: 1
+  fix_id: hold_oxygen

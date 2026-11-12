@@ -1,0 +1,162 @@
+name: pyscf
+backend:
+  module: backend
+  class: PySCFBackend
+# Molecular (non-periodic) backend: periodic runs are rejected by the
+# skill validation instead of being silently ignored.
+supports_pbc: false
+units:
+  energy: hartree
+  gradient: hartree/bohr
+roles:
+  qm: PySCFBackend
+  # This skill can hold both layers of a single-center composite: the two-layer
+  # PySCF transition-state search shipped as `optimize_ts_multiscale.yaml` is
+  # planned, dispatched and converged on the test environment (3 tasks per evaluation,
+  # `qm`, `qm2`, `qm2_task1`). It used to say `false` here while the framework
+  # resolved the second position anyway.
+  qm2: PySCFBackend
+  mm: false
+capabilities:
+- energy
+- gradient
+- frequency
+- geometry_optimization
+- ir_spectrum
+- uv_spectrum
+- nmr_spectrum
+- analysis
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). Only a thread axis: this skill starts no MPI
+# ranks, so one calculation is one process.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+
+profiles:
+  hf_energy:
+    capability: energy
+    method: hf
+  hf_gradient:
+    capability: gradient
+    method: hf
+  hf_hessian:
+    capability: frequency
+    method: hf
+  hf_opt_min:
+    capability: geometry_optimization
+    method: hf
+  hf_opt_ts:
+    capability: geometry_optimization
+    method: hf
+  hf_mo:
+    capability: analysis
+    method: hf
+  hf_esp:
+    capability: analysis
+    method: hf
+  hf_population:
+    capability: analysis
+    method: hf
+  hf_ir:
+    capability: ir_spectrum
+    method: hf
+  hf_nmr:
+    capability: nmr_spectrum
+    method: hf
+  dft_energy:
+    capability: energy
+    method: dft
+  dft_gradient:
+    capability: gradient
+    method: dft
+  dft_hessian:
+    capability: frequency
+    method: dft
+  dft_opt_min:
+    capability: geometry_optimization
+    method: dft
+  dft_opt_ts:
+    capability: geometry_optimization
+    method: dft
+  dft_mo:
+    capability: analysis
+    method: dft
+  dft_esp:
+    capability: analysis
+    method: dft
+  dft_population:
+    capability: analysis
+    method: dft
+  dft_ir:
+    capability: ir_spectrum
+    method: dft
+  dft_nmr:
+    capability: nmr_spectrum
+    method: dft
+  mp2_energy:
+    capability: energy
+    method: mp2
+  mp2_gradient:
+    capability: gradient
+    method: mp2
+  mp2_mo:
+    capability: analysis
+    method: mp2
+  mp2_esp:
+    capability: analysis
+    method: mp2
+  mp2_population:
+    capability: analysis
+    method: mp2
+  tddft_energy:
+    capability: energy
+    method: tddft
+  tddft_gradient:
+    capability: gradient
+    method: tddft
+  tddft_opt_min:
+    capability: geometry_optimization
+    method: tddft
+  tddft_uv_vis:
+    capability: uv_spectrum
+    method: tddft
+  tddft_mo:
+    capability: analysis
+    method: tddft
+  tddft_esp:
+    capability: analysis
+    method: tddft
+  tddft_population:
+    capability: analysis
+    method: tddft
+  tda_energy:
+    capability: energy
+    method: tda
+  tda_gradient:
+    capability: gradient
+    method: tda
+  tda_opt_min:
+    capability: geometry_optimization
+    method: tda
+  tda_uv_vis:
+    capability: uv_spectrum
+    method: tda
+  tda_mo:
+    capability: analysis
+    method: tda
+  tda_esp:
+    capability: analysis
+    method: tda
+  tda_population:
+    capability: analysis
+    method: tda

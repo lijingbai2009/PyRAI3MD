@@ -1,0 +1,73 @@
+# Transition-state search with one atom held in place (partial TS)
+# Topology: Dispatcher local / Workflow iterative + batch (curvature) / Calculator local
+# Run: pyrai3md optimize_partial_ts.yaml
+#
+# What this example is for. Holding part of the molecule still while the rest
+# finds a saddle is the same `fix` constraint a dynamics run uses; the search
+# then works on the components that are left, and `&hessian` derives its
+# displaced-atom set from that same list, so one declaration moves both.
+#
+# Why the donor oxygen. The pinned atom has to sit where the saddle puts it,
+# because a search cannot move it: the geometry below is the saddle this run
+# converges to, with the five atoms that may move displaced by 0.05 A. That is
+# also the property a real-engine reading of a pinned search can test and no
+# analytic instrument can: with one atom anchored, three of the whole-body
+# motions are absorbed by the anchor while the other three are ordinary
+# deformations with ordinary curvature, and the search has to be allowed to use
+# them (`dev/methods/OPTIMIZE_DEVELOPMENT.md` section 15.2).
+#
+# Measured on this input (HF/sto-3g, PySCF 2.14). Converged in **75**
+# evaluations at -149.8362656686 Hartree, with `Negative Modes (model)` at 1
+# from the fourteenth evaluation on. A separate `num_freq` job on the geometry
+# it returns reports twelve modes and exactly one of them imaginary:
+# -3064.0 cm-1 (then 654.2, 954.3, 1036.6, 1049.5, 1915.0, 2081.5, 2108.4,
+# 2303.8, 3195.5, 4274.4 and 4277.9 cm-1). The held oxygen came back with
+# components identical to the input, to the last digit printed.
+#
+# What the same molecule costs without the constraint. The undisplaced
+# structure - the shared-proton dimer this saddle grew out of - converges from
+# its own starting geometry in **116** evaluations at -149.8362655968 Hartree:
+# 7.2e-8 Hartree away, which is the same saddle read at a different whole-body
+# orientation, since the anchor leaves that orientation free.
+#
+# The switch that runs this case is `examples.optimize_partial_ts`, off by
+# default: six atoms times seventy-five evaluations, plus a curvature batch over
+# the fifteen components that can move, is the most expensive of the four
+# optimization examples this package ships.
+
+control:
+  title: optimize_partial_ts_example
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: ts
+  maxit: 150
+  opt_energy: 1e-6
+  opt_grms: 3e-4
+  opt_gmax: 4.5e-4
+  opt_drms: 1.2e-3
+  opt_dmax: 1.8e-3
+
+atoms: [O, H, O, H, H, H]
+coordinates:
+  - [ 0.0075273836,  0.0483990545, 0.4019883308]
+  - [-0.0111151009, -0.5250197171, 1.4229171952]
+  - [ 0.0059112876,  0.0037072452, 2.5196417046]
+  - [ 0.0746722423,  0.5769306941, 1.4489533777]
+  - [-0.9664777206,  0.0996201596, 2.8065780046]
+  - [ 0.9296216700, -0.0485635660, 0.1146377945]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  fix_atoms: 1
+  fix_id: hold_o1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

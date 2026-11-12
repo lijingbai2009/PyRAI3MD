@@ -1,0 +1,32 @@
+version: 1.0
+name: tddft_soc_test
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 6
+  state_spin: [0, 0, 0, 2, 2, 2]
+  # DoSOC numbers excited roots, so its pairs exclude S0 (six S/T pairs for
+  # two excited singlets and three triplets); the framework derives the pair
+  # map from this declaration instead of enumerating one.
+  coupling: [[1, 3], [1, 4], [1, 5], [2, 3], [2, 4], [2, 5]]
+  profile: tddft_soc
+  method: tddft
+  functional: pbe0
+  basis: sto-3g
+  tda: true
+  execution_mode: local
+
+expected:
+  energy:
+    shape: [6]
+  soc:
+    value: null

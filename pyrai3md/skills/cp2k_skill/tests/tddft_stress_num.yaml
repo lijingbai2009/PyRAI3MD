@@ -1,0 +1,50 @@
+version: 1.0
+name: tddft_stress_num_test
+# Excited-state numerical stress: the route CP2K cannot serve with an
+# analytical tensor (the engine aborts when a stress tensor is requested
+# from a TDDFT run), and the reason this skill drives the strain finite
+# difference itself. One batch of strain points returns a tensor for
+# every state solved in the run, so three states cost no more than one.
+#
+# stress_scope is written here (and left to its default in
+# dft_stress_num), so both scopes are certified: 'iso' samples the
+# uniform dilation and reports the trace on the diagonal for two points.
+# multitask stays unwritten, which certifies the serial arm.
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  lattice_vector:
+    - [10.0, 0.0, 0.0]
+    - [0.0, 10.0, 0.0]
+    - [0.0, 0.0, 10.0]
+  pbc: [1, 1, 1]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  target_states: [0, 1]
+  current_state: 1
+  profile: tddft_gradient
+  method: tddft
+  functional: pbe0
+  cutoff: 400
+  ref_cutoff: 50
+  stress: true
+  stress_method: num
+  stress_scope: iso
+  stress_delta: 1.0e-3
+  execution_mode: local
+
+expected:
+  energy:
+    shape: [3]
+  gradient:
+    shape: [3, 6, 3]
+  stress_tensor:
+    shape: [3, 3, 3]

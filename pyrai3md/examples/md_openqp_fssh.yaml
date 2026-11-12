@@ -1,0 +1,55 @@
+# Framework-driven NAMD (FSSH + kTDC) on C2H4 with OpenQP MRSF
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md md_openqp_fssh.yaml
+#
+# Three singlet states (ci: "3") with all three coupling pairs; the
+# trajectory starts on S1 (md.root is externally 1-based, so root "2"
+# is the second state). kTDC estimates the nonadiabatic coupling from
+# the energy curvature, so the run only needs state energies and
+# gradients per step.
+
+control:
+  title: md_openqp_fssh_example
+  jobtype: md
+  theory: [openqp]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, 0.000000000, -2.661941306]
+  - [-1.120191050, 0.000000000, -1.331783306]
+  - [-0.590584410, 0.756356668, -3.234891306]
+  - [-1.649797690, -0.756356668, -3.234891306]
+  - [-1.876547718, -0.529606640, -0.758833306]
+  - [-0.363834382, 0.529606640, -0.758833306]
+
+# Initial velocities: one Maxwell-Boltzmann draw at 298.15 K for this
+# molecule (fixed seed 20260926, center-of-mass translation removed,
+# Bohr/au), shared by every ethylene MD example.
+velocities:
+  - [0.000233177, -0.000042299, -0.000208531]
+  - [-0.000217441, 0.000195315, 0.000185800]
+  - [-0.000893166, -0.000054466, 0.000176273]
+  - [0.001361820, -0.000285727, 0.000253295]
+  - [-0.000024165, -0.000666228, 0.000131482]
+  - [-0.000631993, -0.000816868, -0.000290190]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: "3"
+  spin: "0"
+  coupling: "1 2, 2 3, 1 3"
+
+md:
+  root: "2"
+  initcond: 0
+  ninitcond: 1
+  sfhp: fssh
+  nactype: ktdc
+  step: 10
+  size: 20.67
+
+openqp:
+  method: mrsf
+  basis: sto-3g
+  functional: bhhlyp

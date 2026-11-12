@@ -1,0 +1,1845 @@
+# Per-test execution timeout in seconds. The runner's subprocess uses
+# this value as its backstop; every generated execution script embeds
+# `timeout (_timeout - 5)s` so the script kills the engine process group
+# just before the backstop, leaving no residual processes. deploy's polling
+# idle timeout is its own base (300s) plus this budget.
+#
+# Measured on the deployment, from the run's own PyRAI3MD End line: the
+# longest LAMMPS example (md_lammps_nve, 2000 steps at 1 fs, direct 1 /
+# buffer 100) finishes in 12 s of wall time, at the 4.20 ms per step
+# framework time #244 measured. Against this 1200 s backstop that is a
+# factor of a hundred.
+#
+# What that means in one sentence, because it is a decision and not an
+# oversight: an example that silently falls back to the subprocess path
+# costs 950 ms per step, so the same 2000-step run needs ~1900 s and is
+# stopped at 1195 s rather than grinding past the backstop. A run whose
+# resident service did not come up should report a timeout, not pass on a
+# timetable nothing planned for.
+#
+# This is the only budget. The per-example `_example_timeout` map was
+# removed on 2026-10-20: it existed for `optimize_cell_gap_cp2k`, the
+# thirteen-call CP2K strain step, and round tmp_20261019_200652 measured
+# both of that example's legs inside this backstop (735 s and 728 s, 61%
+# of 1200 s) once the two workers each cp2k file now declares were in use.
+# Every example answers to `_timeout`; a future case that genuinely needs
+# more room gets the number raised here, with the measurement that asks
+# for it, rather than a second table.
+#
+# Raised 2026-11-05 for the four single-center multi-step periodic legs
+# (`multiscale_qmmm_{embedding,no_embedding}_md`, `_mep`, `_neb`), which this
+# round opens as the regression arm for the deployment build's periodic resident
+# session (#452 found the cause, #457 the readings). The reading that asks for it is round 18's
+# own note on those two MD legs - "the two 20-min MD legs", i.e. ~1200 s, the
+# whole of the previous budget - together with `multicenter_qmmm_num_freq`
+# taking 18:39 of 1200 s in round `tmp_20261104_124614`. At 1200 s those legs
+# would report a timeout rather than a physics verdict.
+_timeout: 2400
+# The master switch, three values:
+#   true       - every example, skill case and benchmark calibration runs,
+#                and the integration tests open whatever test_integration says
+#   false      - none of the switched work runs; the verification unit tests
+#                keep running, while the integration tests close with it
+#   condition  - the family switches and the per-test switches decide
+# The master is consulted above the family switches, so `false` closes a
+# family even when its own key reads `true`: an optimize round is
+# `_runall: condition` plus `examples.optimize_test: true`, never `false`.
+#_runall: condition
+_runall: true
+# Integration tests: the cross-mode / all-shipped-example checks in
+# qualification/integration/. They are not unit tests and are skipped by
+# default; true runs them, false skips them (a folded row names this key).
+# `_runall` sits above this switch: true forces integration on, false off,
+# condition lets this key answer. The verification unit suite always runs.
+test_integration: true
+_prompts:
+  conda_asked: true
+deploy:
+  host: 10.2.66.35
+  install_path: /public/home/lijb/test/pmd3
+  jump_host: 10.2.33.2
+  jump_username: lijb
+  port: 22
+  username: lijb
+environment:
+  conda: aicclab
+  dependencies: []
+  shell:
+  - module load compiler/gcc/gcc-11.3.0
+  - module load compiler/intel/mkl-mpi
+  export:
+    MPI_NP:
+    - 1
+    OMP_NUM_THREADS:
+    - 1
+  python: python3
+  scheduler: slurm
+  # Worker processes for the plan phase. Planning parses every example
+  # YAML and renders its carriers; the work is independent per example,
+  # so a small spawn pool shortens a full round's startup. 0 = auto
+  # (at most 8, never more than the host has), 1 = serial. This changes
+  # only how fast the plan is built, not what it contains or how tests
+  # execute.
+  planning_workers: 0
+  # How many grouped jobs a slurm round keeps submitted and unfinished
+  # before it stops submitting more. 0 (the default) submits the whole
+  # round at once and lets the scheduler queue it; N > 0 holds the rest
+  # locally and tops the in-flight count back up to N as jobs finish.
+  max_in_flight: 0
+examples:
+  # Three family switches, above the per-example keys below and below
+  # `_runall`, each taking the same three values as the master:
+  #   true      - every example of the family runs, whatever its own key says
+  #   false     - none of the family runs, whatever its own key says
+  #   condition - each example below decides for itself
+  # `md_lammps_test` covers the `md_lammps_*` ensemble set, `constraint_md_test`
+  # the `constraint_md_*` cases, `optimize_test` the twenty-five `optimize_*` cases
+  # (the seventeen `optimize_cell_*` among them), and `path_test` the thirty-two
+  # `path_*` cases - the path family is asked for as `optimize.method` mep / irc /
+  # neb, and its examples carry their own prefix so one key opens the whole chain
+  # without opening the single-structure searches with it. Membership is the name,
+  # not the physics: `constraint_opt_periodic` and `constraint_opt_surface` do
+  # relax a box and a surface, yet they stay individual, so an optimize round does
+  # not silently certify the constraint subsystem with it. Everything else is
+  # individual too: `energy`,
+  # `gradient`, `multicenter_*`, the `md_*_fssh` set, the three
+  # dispatch topologies (`md_local` serial, `md_parallel` local pool,
+  # `md_batch` Slurm fan-out), and the constraint cases outside the
+  # `constraint_md_` prefix (`constraint_opt_
+  # surface`, `constraint_sp_bias`, `constraint_wall_center`).
+  md_lammps_test: false
+  constraint_md_test: false
+  # The path family's group switch, `condition` like the two above: the twenty-one
+  # `path_*` cases decide for themselves below, and flipping this key to `true`
+  # opens all of them at once. They are switched off for the optimize round (the
+  # keys below carry the readings in their comments - the readings are unmeasured
+  # for the three xtb cases on a host without xtb) rather than withdrawn.
+  path_test: false
+  # The multiscale composite family: every `multiscale_*` example
+  # (ONIOM2/3 and QMMM; energy+SOC and 5-step NAMD, plus the optimize/path
+  # copies this round added). It needs openqp, xtb, LAMMPS and (for the
+  # QMMM cases) Molcas on the host, so it stays closed unless a multiscale
+  # round asks for it. The switch is `condition` rather than `true` because
+  # the ONIOM charge-embedding copies additionally need ORCA/BAGEL: a single
+  # `true` would run them on a host that lacks those engines.
+  # Round 15 (#448) takes the whole multi-scale band again: #444's three
+  # readings still owed (the ts leg's `hessian_atoms` and the MM coordinates
+  # staying bit-identical, the mep leg's image count and per-step
+  # `qmmm_components`, the ONIOM charge leg against its no-embedding twin) live
+  # in this family, and the last full green band was round 9
+  # (`tmp_20261101_154013`).
+  # Round 17 (#449): the family is narrowed to the four QMMM legs this
+  # round is about. The molcas QMMM single point is the mixed-ladder deck
+  # (`ci: "2 1"` / `spin: "0 1"`), so it is the engine reading for the
+  # per-manifold `&ESPF` blocks; its `no_embedding` twin is the control.
+  multiscale_test: false
+  # The adaptive family (#455/#464): every `adaptive_*` example, opened
+  # by its own key below. `condition` keeps the individual switches in
+  # charge, so a round opens exactly the carriers it names.
+  adaptive_test: false
+  # The original sixteen (mechanical / field / read_charge variants).
+  multiscale_oniom2_no_embedding_sp: false   # round 23 (#450): the charge-scatter band
+  multiscale_oniom2_embedding_sp: false   # round 23 (#450): the charge-scatter band
+  multiscale_oniom2_read_charge_sp: false
+  multiscale_oniom2_no_embedding_md: false
+  multiscale_oniom2_embedding_md: false
+  multiscale_oniom2_read_charge_md: false
+  multiscale_oniom3_no_embedding_sp: false   # round 23 (#450): the charge-scatter band
+  multiscale_oniom3_embedding_sp: false   # round 23 (#450): the charge-scatter band
+  multiscale_oniom3_read_charge_sp: false
+  multiscale_oniom3_no_embedding_md: false
+  multiscale_oniom3_embedding_md: false
+  multiscale_oniom3_read_charge_md: false
+  # Round 17 (#449): the mixed-ladder QMMM legs. `embedding_sp` is the
+  # deck that now writes one `&ESPF` per spin manifold; the twin is the
+  # control (no embedding, so one group and no field block).
+  # Round 23 (#450): the ONIOM embedding legs, re-read after the
+  # per-state charge-row change (they scatter theory[0]/theory[1]).
+  # They are opened in the per-example block below.
+  # Round 21 (#449): the framework-native carrier for the two-pass deck.
+  multiscale_qmmm_embedding_nac: false   # round 21 green (the two-pass deck carrier)
+  multiscale_qmmm_embedding_sp: false   # round 17/18 green
+  multiscale_qmmm_no_embedding_sp: false   # round 17/18 green
+  # The four single-center multi-step periodic legs, opened as the control that says
+  # whether the deployment build's periodic resident session fails for multi-center or
+  # for any multi-step field leg (#452 pinned the cause on the probe's rank count, and
+  # this is the arm that checks it did not leave a second one behind). They are the
+  # reason `_timeout` is 2400 now: round 18 measured these two MD legs at about 20 min.
+  multiscale_qmmm_embedding_md: false
+  multiscale_qmmm_no_embedding_md: false
+  # QMMM optimize/path copies: Molcas + LAMMPS, the same engines the
+  # family already requires.
+  multiscale_qmmm_meci: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  multiscale_qmmm_mecp: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  multiscale_qmmm_mecp_cluster: false
+  multiscale_qmmm_ts: false
+  multiscale_qmmm_mep: false   # opened with the other three periodic multi-step arms
+  # The band arm costs three boxes per round (3 images) on the 60-atom
+  # carrier, each with its own field probe and ESPF run, so it is the most
+  # expensive case in the family.
+  multiscale_qmmm_neb: false   # opened with the other three periodic multi-step arms
+  # ONIOM point-charge embedding: ORCA / BAGEL are an extra engine
+  # requirement, so each case is opened only on a host that carries one.
+  multiscale_oniom2_orca_charge_meci: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  multiscale_oniom2_orca_charge_mep: false
+  multiscale_oniom2_bagel_charge_mecp: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  multiscale_oniom2_bagel_charge_ts: false
+  # ONIOM true-embedding carriers: ORCA high with PySCF as the charge source
+  # (LAMMPS low for the three-layer legs). ORCA+PySCF+LAMMPS are available
+  # locally, so these are opened; the Molcas pair is engine-gated.
+  multiscale_oniom2_orca_embedding_sp: false
+  multiscale_oniom2_orca_no_embedding_sp: false
+  multiscale_oniom2_orca_embedding_md: false
+  multiscale_oniom2_molcas_embedding_nac: false
+  multiscale_oniom2_orca_embedding_meci: false
+  multiscale_oniom2_orca_embedding_neb: false
+  multiscale_oniom2_molcas_embedding_sp: false
+  multiscale_oniom2_molcas_no_embedding_sp: false
+  multiscale_oniom3_orca_embedding_npt: false
+  multiscale_oniom3_orca_embedding_cell: false
+  # Round 14 (2026-11-01 23:15) closes the last two ORCA rows and did:
+  # `tmp_20261101_232010` printed **171 rows, 167 PASS / 0 FAIL / 0 ERROR**
+  # (the other 368 rows of the 539-row plan are closed by their switches), so
+  # the six ORCA rows that failed rounds 11-13 are green. Round 13
+  # `tmp_20261101_224544` (171 rows) printed 164 PASS / 3 FAIL / 0 ERROR: the
+  # SOC rows went green with the rewritten SOCME reader, and the three
+  # `tddft_nac` rows failed on the guard written for exactly this - "the deck
+  # carries `NACME true` but the log holds no derivative-coupling vector".
+  # The measured cause: ORCA prints `CARTESIAN NON-ADIABATIC COUPLINGS` (not
+  # the `Coupling vector between states i and j` header the reader looked
+  # for), and without `irootlist` it computes the coupling of root 1 only -
+  # one block for a request of two pairs. Both fixed; this round is the same
+  # posture (ORCA family + framework main rows).
+  # Round 13 (2026-11-01 23:20) is round 12 with the two engine readings
+  # turned into code. Round 12 `tmp_20261101_221306` (171 rows) printed
+  # 161 PASS / 6 FAIL / 0 ERROR, the same six ORCA rows, but for two new and
+  # deeper reasons: `tddft_nac` now died in ORCA itself (return code 64,
+  # `!!! CANNOT OPEN FILE Filename: <project>.nacme.tmp !!!` - `EnGrad` beside
+  # `NACME true` is refused, which is the combination #446 left unmeasured),
+  # and `tddft_soc` came back "SOC pair [1, 3] was requested but this log
+  # prints no spin-orbit matrix element (elements read for nothing)" because
+  # the reader looked for a header ORCA never prints. Both are fixed
+  # (`service/utils.py::writes_engrad`/`writes_nacme`, and the SOCME table
+  # reader rewritten to the measured layout); the fixtures now declare their
+  # pairs. This round is the same posture as round 12: the ORCA skill family
+  # plus the framework main rows.
+  # Round 12 (2026-11-01 22:30) retries one thing. Round 11
+  # `tmp_20261101_202940` ran 484 rows (main 98, example 23, skill 362,
+  # benchmark 1) and printed 474 PASS / 6 FAIL / 0 ERROR: the six are
+  # `orca_skill_tddft_{nac,soc}_{agent,input,skill}` and all six are the same
+  # message - "this run asks orca_skill for nac/soc couplings, but
+  # molecule.coupling declares no pair for it". The declaration check this
+  # round added is right and those two fixtures were the defect: their
+  # generated classic input (`tmp_20261101_202940/orca_skill/tddft_nac.input`)
+  # carries `jobtype energy gradient nac` and no `coupling` line. Both now
+  # declare their pairs (`tddft_nac`: S0-S1/S0-S2, `tddft_soc`: the six
+  # excited S/T pairs DoSOC can answer), and the fixture change is the only
+  # code-adjacent change since that round, so this round is the ORCA skill
+  # family plus the framework main rows and nothing else.
+  # Round 11 (2026-11-01 19:40) is the coupling-declaration round (#447): one
+  # derivation of `coupling` -> `nac_pair_map`/`soc_pair_map` with a
+  # two-way check, no invented adjacent pairs, and no zero-filled coupling
+  # row anywhere in the readers. Opened by name: the four crossing legs
+  # (`multiscale_qmmm_meci`/`_mecp`, the two ONIOM charge crossings - `mecp`
+  # is the negative witness, it must NOT ask for a coupling), the five
+  # `md_*_fssh` legs (molcas/bagel/openqp/orca dynamics, whose decks are now
+  # built from the declaration), the two `multicenter_pbc_*` legs (a center
+  # with no declared coupling now gets none instead of adjacent pairs), the
+  # two lammps cell crossings (`optimize_cell_{meci,mecp}_lammps`, where the
+  # backend offers no coupling at all, so the token must be dropped rather
+  # than refused), and the skill families molcas / orca / bagel / openqp /
+  # qdm / nn_pes. Measured on this checkout: 13 example cases open by name,
+  # 6 skill families; the seven periodic path/constraint legs closed for this
+  # round ran green at 1e-8 in round 10.
+  # Round 10 (2026-11-01 16:05) is the smallest round that can settle the last
+  # two fixes: only `multiscale_oniom2_orca_charge_meci` and `multiscale_qmmm_meci`
+  # stay open by name (plus the two `multicenter_pbc_*` legs that ride along),
+  # because round `tmp_20261101_154013` already showed the whole band green with
+  # everything except the ORCA profile fix (`tddft_nac` had no `gradient` step, so
+  # the deck printed neither `EnGrad` nor `irootlist`, ORCA wrote no
+  # `CARTESIAN GRADIENT`, and the crossing's gap gradient came back exactly zero).
+  # Measured here with `generate_plan(load_config(), tmp)`: 107 main rows (96 work),
+  # 160 example rows (8 work), 218 skill rows (26 work), 25 benchmark rows (all
+  # closed); 130 rows to work.
+  # Round 8 of this change (2026-11-01 11:40) narrows further: the skill
+  # families just ran green on this code in round `tmp_20261101_104225` (170
+  # skill rows, 0 fail), so `lammps_skill` and `molcas_skill` close and the
+  # round is the 22 multiscale examples on two carriers (44 rows) plus the 96
+  # framework main rows. What it has to settle are the two failures that round
+  # printed, both now fixed here: `multiscale_qmmm_meci` died on
+  # `shapes (18,) and (4743,) not aligned` because a region provider's coupling
+  # rows were never scattered into whole-system coordinates, and
+  # `multiscale_oniom2_orca_charge_meci` came back with ORCA return code 25 on
+  # `The NACMEs are currently not compatible with point charges!`
+  # (main_input_check.cpp:10261) - the switch is now left out beside charges
+  # with a warning, and the step reports no coupling instead of a fabricated
+  # zero one.
+  # The posture below was the first round of this change (2026-11-01 11:00): the
+  # three example families this change cannot touch - `path_test`,
+  # `md_lammps_test`, `constraint_md_test` - and `optimize_test` all read
+  # `false`, because a NAC readback change, a per-state charge row and a
+  # per-step coupling request reach no case outside the multiscale band.
+  # `multiscale_test` stays `condition` and the twenty cases opened by name
+  # carry the round: the ten `multiscale_qmmm_*`, the six `multiscale_oniom3_*`
+  # and the four `multiscale_oniom2_charge_*` - `multiscale_qmmm_meci` is the
+  # case whose deck now names a pair, and `multiscale_oniom2_orca_charge_meci`
+  # is the second case that picks up the `nac` token. Skills: `lammps_skill`
+  # stays `true` and `molcas_skill` stays `condition` (its engine and deck
+  # checks are the parser's own), so the skill rows are lammps 63 + molcas 104
+  # + 3 shared. Measured on this checkout with `generate_plan(load_config(),
+  # tmp)`: 107 main rows (96 work), 178 example rows (44 work - 22 examples at
+  # their `yaml` and `input` carriers), 314 skill rows (170 work), 25 benchmark
+  # rows (all closed); 310 rows to work.
+  # The posture this replaces was the periodic-accuracy round's, and the row
+  # figures quoted below (328 to work over 332 printed) were measured for THAT
+  # posture, not for this one.
+  # This posture ran as round `tmp_20261031_220625`: 332 rows printed (97 main,
+  # 63 example, 171 skill, 1 benchmark), 328 passed and the other four are the
+  # `*_closed` summary rows - the first round with no failures.
+  # The posture this replaces was the optimize round's, and the row figures
+  # quoted below (445 / 676 / 399) were measured for THAT posture, not for
+  # this one.
+  # The round is the
+  # 100 framework main tests (no switch), the twenty-five `optimize_*` examples on
+  # two carriers each, the 64 engine-free skill pytest files under
+  # skills/*/tests, and - ruled on 2026-10-17, see the LAMMPS section below -
+  # the eleven LAMMPS cases on their three carriers. Measured on this checkout
+  # with the same probe `tools/deploy.py` sends to the server
+  # (`generate_plan(load_config(), tmp)`, folded per category), on this host's
+  # `python3` (3.9.6, TensorFlow absent): 445 rows, 197 of them closed by
+  # switches, 248 doing work, and the run prints 251 rows (the folded row of
+  # each bucket that has closes). With `_runall: true` the same file plans 676
+  # rows, 670 of them to work: the six that stay closed are capability closures
+  # rather than switch ones - `md_batch` and `nn_grid_search` want `sbatch` and
+  # four cases want TensorFlow, and this host has neither. With `_runall: false`,
+  # 399 rows, 232 closed, and still 167 that need no engine (printing 170, the
+  # same number the file printed before these three cases were added, because a
+  # closed example lands in a bucket that already prints its closed row). The plan
+  # lays a closed example as one row and an open one as its `yaml` and `input`
+  # rows (72 closed stems plus 24 open stems at two rows each = 120 example
+  # rows), which is why the three additions move the row totals by +4 as shipped,
+  # +4 under `_runall: true` and +2 under `_runall: false`, where all three are
+  # closed examples. Those figures were re-measured for `optimize_cell_iso`,
+  # `optimize_cell_meci_lammps` and `optimize_cell_mecp_lammps`, which take the
+  # cell set to sixteen; the 439/197/242/245 reading belongs to the file as #388
+  # left it. The full-round
+  # figure is a host reading and not a constant: on this interpreter the four
+  # `nn_*` examples plan as named skips because TensorFlow is absent, so a
+  # checkout with the ML extra plans a larger round than the 676 written here -
+  # measured on the repository `.venv` (3.11, TensorFlow 2.21.0): 715 printed,
+  # of which example_tests 190 and skill_tests 400.
+  #
+  # 2026-10-20 final mixed round. On top of the optimize family this file opens
+  # `md_parallel`/`md_batch` (the `.input` carriers #395's writer fix still owed
+  # a reading), `hessian_num` (the framework's displaced-gradient chain), the
+  # two periodic angle/dihedral constraint examples, one MOLCAS HF energy case
+  # (the engine leg `verify.py::_engine_molcas` never had) and the two CP2K
+  # numerical-stress cases. The row counts above describe the optimize-only
+  # posture; the mixed plan is re-measured with `manager.generate_plan` before
+  # submission. Round tmp_20261020_084213 then showed the skill case's MOLCAS
+  # directory is outside verify's example-leg scan, so `md_molcas_fssh` is
+  # opened as the reader's actual vehicle; the final round tmp_20261020_111423
+  # ran it and the reader claimed the CASSCF roots (C `engines_matched` gains
+  # MOLCAS, `dirs_unread` empty).
+  # Three keys carry the decision and the same three carry it back: `_runall`
+  # here, this key, and `skills.nn_pes_skill.test` below.
+  optimize_test: false
+  energy: false
+  gradient: false
+  # The framework's own numerical Hessian chain end to end (19 displaced
+  # gradient jobs of water at HF/sto-3g, ~4 s). Needs PySCF only, so it
+  # stayed on under `condition` until the optimize round: without a remote case
+  # this route has no real-engine reading at all (dev/methods/
+  # NUM_HESS_DEVELOPMENT.md).
+# Switched off for the optimize round, not withdrawn: the reading above
+# still stands. `optimize_test: true` is what closes it while the master
+# reads `condition`, and `_runall: true` reopens it whatever this key
+# says.
+  # Opened for the 2026-10-20 mixed round: the framework's displaced-gradient
+  # Hessian chain gets its real-engine leg. This is the route the cell TS uses
+  # (`optimize_cell_ts` declares `hess_driver: main`): a formal skill backend
+  # supplies at most its atomic block, while the six lattice rows are the
+  # framework's strained batch. A periodic engine-side Hessian is out of the
+  # current scope by ruling, not an owed producer; `optimize_ts_skill_hess`
+  # keeps the non-periodic backend matrix leg.
+  hessian_num: false
+  # The path family (`optimize.method` mep / irc / neb). Switched off for the
+  # optimize round, not withdrawn: `path_test: true` above opens all thirty-two,
+  # and so does each key on its own.
+  #
+  # What the thirty-two are, by what they need from a host. Eighteen are a
+  # single PySCF layer: the MEP arms (`path_mep`, `path_mep_relu`, the three
+  # held-condition walks `path_mep_bond` / `path_mep_angle` /
+  # `path_mep_torsion`, and the frozen-atom `path_mep_freeze`), the IRC set
+  # (`path_irc` and its `both` variant `path_irc_mode`, the held-bond walk
+  # `path_irc_bond` and the penalty-model `path_irc_relu`), and the band set
+  # (`path_neb`, `path_neb_ts`, `path_neb_geodesic`, `path_neb_bond`, the
+  # held-angle `path_neb_angle`, the held-torsion `path_neb_torsion`, the
+  # frozen-atom `path_neb_freeze`, and the climbing-image `path_cineb`). Three
+  # are a single-centre composite of two PySCF layers whose model region covers
+  # the whole system (`path_mep_multiscale`, `path_irc_multiscale`,
+  # `path_neb_multiscale`): the same paths again, assembled from two terms,
+  # which is the arm that says a layered evaluation reaches the same surface.
+  # One is the same composite with an xtb environment and a moving box
+  # (`path_cell_mep_multiscale`): the centre is PySCF, the whole 12-atom box is
+  # GFN-FF, and the box is stepped on the outer layer's stress - the only layer
+  # that has one. Two are periodic on LAMMPS (`path_mep_pbc`, `path_neb_pbc`)
+  # and eight are
+  # the xtb set (the linear periodic bands `path_neb_xtb` and
+  # `path_neb_pbc_geodesic`, the periodic IRC `path_irc_pbc`, the variable-cell
+  # walks `path_cell_mep` / `path_cell_mep_relu` / `path_cell_irc` and the
+  # variable-cell bands `path_cell_cineb` / `path_cell_neb_geodesic`, all under
+  # 1 kbar). What the xtb and LAMMPS arms have not run is stated per case below.
+  #
+  # The reading. Round `tmp_20261022_084519` ran all thirty-one in both carriers
+  # on the deployment host (which has PySCF, LAMMPS and xtb): **62 example rows,
+  # 62 pass**, in a round of 289 rows - 286 pass, 0 fail, 0 error, 213 closed -
+  # which is the `examples.path_test: true` posture this file is in, with
+  # `optimize_test` reading `false`. The round before it ran the first
+  # twenty-one (42 rows): the two variable-cell rows were its only failures,
+  # on a band that stepped each image's lattice while its record still reported
+  # the box it started with. The thirty-one's own readings are summarised here
+  # and stated per case in their headers: `path_cell_mep_relu` 8 points and
+  # 1000.00 -> 1011.94 A^3, `path_cell_irc` 4 points and 1000.00 -> 996.05 A^3,
+  # `path_neb_pbc_geodesic` 5 images with a 0.019 Ha barrier,
+  # `path_cell_neb_geodesic` 5 images and 1000.000 -> 1000.128 A^3 under the
+  # anisotropic coupling, `path_neb_angle` / `path_neb_torsion` 5 images each
+  # with the held value constant, the two frozen cases 0 deviation, and
+  # `path_irc_relu` 6 points down the basin.
+  #
+  # Round `tmp_20261022_103032` re-ran that plan after two defects the first
+  # review found (the IRC `both` branches shared one start, and
+  # `path_irc_pbc` walked the side that climbs): 289 rows, 286 pass, 0 fail,
+  # 213 closed, with `path_irc`'s two saddle rows both -91.5616686633 and
+  # `path_irc_pbc` walking 1 saddle + 4 descending points.
+  #
+  # Round `tmp_20261022_151713` is the thirty-two-case reading: **291 rows,
+  # 288 pass, 0 fail, 0 error, 213 closed**, 64 path rows in both carriers.
+  # `path_cell_mep_multiscale` (PySCF centre + GFN-FF box under 1 kbar) ran
+  # -77.3231 -> -77.6418 Hartree with the volume 1000.000 -> 1000.155 A^3,
+  # identical in both carriers. `tools/verify.py` is clean on that round's
+  # artifacts: D 12 variable-cell legs / 614 rows, F 10 band legs with no
+  # frame jump, 14 condition legs, 4 frozen legs and 4 IRC branch legs.
+  #
+  # What that round was read against afterwards, beyond its own verdicts
+  # (`tools/verify.py`, section F, over the artifacts it left): 10 condition
+  # legs carrying 68 held frames, worst frame-to-frame deviation 1.001e-10 Bohr
+  # (the declared solve tolerance is 1e-10, so the reading and not the solve is
+  # the floor) against a limit of ten times it; and 6 composite legs - three
+  # examples on two carriers - whose profile energies agree with their
+  # single-layer counterparts to the print (ten decimals of a Hartree) on every
+  # point the two share: the MEP pair over its whole profile, the IRC pair on
+  # the shared saddle, the NEB pair on both endpoints. Section D now re-reads a
+  # path leg's cell verdict too (the five cell columns by name, a volume that
+  # moved, and the frame boxes matched the way each kind writes them: a
+  # walker's frames against its own direction's rows, a band's round N against
+  # the frames of round N-1, because a band's row is its reading before the
+  # step). That clause found the variable-cell band writing the parent state's
+  # box into every frame; section F gained the frozen-atom clause and the IRC
+  # branch clause, the second of which found `irc_direction: both` walking its
+  # second branch from the first one's endpoint.
+  path_mep: false
+  # THIS FILE IS SET FOR A PATH ROUND (2026-10-21): `examples.path_test: true`
+  # with `examples.optimize_test: false`, master `_runall: condition` - not
+  # `_runall: true`. The thirty-two `path_*` examples run in both carriers;
+  # the per-case `path_*` keys below stay as individual levers (a family
+  # `true` outranks them) and the `optimize_*` keys stay where they were, so
+  # flipping the two family keys back reopens an optimize round.
+  #
+  # The example bucket re-measured on this checkout with the planner's own
+  # folding (`manager.generate_plan` + `runner._folded_count`, the pair
+  # `tools/deploy.py` sends to the server): with the thirty-two path cases this
+  # posture plans 166 example rows, 91 of them closed by switches (the `path_*`
+  # keys below are outranked by `path_test: true`, so the added cases are open
+  # too), and prints 76. The twenty-one-case round that ran read 144 / 91 /
+  # 54, and the optimize round the file carried before it 148 / 87 / 62. The
+  # main/skill/benchmark figures elsewhere in this comment were not re-measured
+  # for either and stand as they were. What round `tmp_20261021_195813` actually
+  # printed on the server, folded per category: main 103, examples 55 - the 54
+  # of that posture plus the one row the example bucket's closed switches fold
+  # into - skills 110, benchmark 1, for 269 in total. The plan side of that
+  # round is 478 rows, 213 of them closed by switches and one more by a
+  # capability, 268 printed; the 213 is the same number the round's own summary
+  # reported as `SKIP`. With the thirty-two path cases the same plan is 500
+  # rows, the same 213 closed and 290 printed - the added cases are two carriers
+  # each and no switch closes them. The deployment prints **289**:
+  # `md_batch` submits its children to Slurm, so this host plans it as one
+  # named skip for want of `sbatch` while the deployment, which has it, runs
+  # both carriers. The difference is host capability, not the switchboard.
+  path_mep_relu: false
+  path_irc: false
+  path_irc_mode: false
+  path_neb: false
+  path_cineb: false
+  path_neb_geodesic: false
+  path_neb_ts: false
+  path_neb_xtb: false
+  path_mep_bond: false
+  path_irc_bond: false
+  path_neb_bond: false
+  path_irc_multiscale: false
+  path_mep_multiscale: false
+  path_mep_pbc: false   # closed for round 11 (#447): the coupling declaration and readback this round tests reaches no case outside the multistate band, and round `tmp_20261101_160x` ran these green at 1e-8
+  path_neb_multiscale: false
+  path_neb_pbc: false   # closed for round 11 (#447): the coupling declaration and readback this round tests reaches no case outside the multistate band, and round `tmp_20261101_160x` ran these green at 1e-8
+  path_mep_angle: false
+  path_mep_torsion: false
+  path_cell_mep: false
+  path_cell_cineb: false
+  path_cell_mep_multiscale: false
+  path_irc_relu: false
+  path_irc_pbc: false
+  path_cell_irc: false
+  path_cell_mep_relu: false
+  path_cell_neb_geodesic: false
+  path_neb_pbc_geodesic: false
+  path_neb_angle: false
+  path_neb_torsion: false
+  path_neb_freeze: false
+  path_mep_freeze: false
+  optimize_gdiis: false
+  optimize_minima: false
+  optimize_tda: false
+  # The transition-state chain: the framework's displaced-gradient curvature,
+  # the backend's own matrix through one dispatched property job, and a
+  # single-center composite of two layers. Each converges in 32 evaluations on
+  # HF/sto-3g HCN (~4-12 s) and each needs PySCF only, so they stayed on under
+  # `condition` - the same reason as `hessian_num` above: without a remote case
+  # these routes have no real-engine reading at all (dev/methods/
+  # OPTIMIZE_DEVELOPMENT.md section 15.2). They keep the value while
+  # `optimize_test` reads `true` because it is not consulted; it is the honest
+  # fallback the day the family goes back to `condition`.
+  optimize_ts: false
+  optimize_ts_skill_hess: false
+  optimize_ts_multiscale: false
+  # A relaxation with a pinned fragment (27 evaluations, ~3 s). PySCF only.
+  optimize_partial_minima: false
+  # A saddle search with one atom held by the anchor: it converges in 75
+  # evaluations on a six-atom system, and its initial curvature is a displaced
+  # batch over the fifteen components that can move, so it is the most
+  # expensive of the optimization examples this package ships. Measured on the
+  # local machine, kept off the default run for cost rather than doubt; the
+  # same input is what `dev/methods/OPTIMIZE_DEVELOPMENT.md` section 15.2
+  # quotes its numbers from. The family switch is by name and necessarily
+  # brings it into every optimize round - that is the ruling, and the round's
+  # wall clock is where its cost gets read rather than argued.
+  optimize_partial_ts: false
+  # The variable-cell set (#355): a 25 A TIP3P box on LAMMPS, the same box with
+  # a held bond, angle and pinned oxygen, and the ethylene-in-a-10-A box on
+  # xtb (GFN-FF, the only periodic stress producer there, #356) and on cp2k
+  # (an excited state through the skill's own strain route). Written `true`
+  # although the family decides it now, so that a round falling back to
+  # `condition` keeps the four on record instead of inheriting them from the
+  # missing-key default. Their wall clock on the quantum engines has one
+  # reading, the optimize round's own - and it has one: round
+  # tmp_20261016_075328 measured the cp2k case at no more than 390 s a step
+  # (thirteen CP2K calls per step, three steps inside the 1200 s backstop), which
+  # is why that example ships maxit: 2; the xtb case ran four steps in seconds
+  # on GFN-FF.
+  optimize_cell_lammps: false   # closed for round 11 (#447): the coupling declaration and readback this round tests reaches no case outside the multistate band, and round `tmp_20261101_160x` ran these green at 1e-8
+  optimize_cell_lammps_constrained: false   # closed for round 11 (#447): the coupling declaration and readback this round tests reaches no case outside the multistate band, and round `tmp_20261101_160x` ran these green at 1e-8
+  # The angle-only counterpart: one held H-O-H angle + pinned atom, no bond,
+  # maxit 6; functional test, not a convergence test.
+  optimize_cell_lammps_angle: false   # closed for round 11 (#447): the coupling declaration and readback this round tests reaches no case outside the multistate band, and round `tmp_20261101_160x` ran these green at 1e-8
+  optimize_cell_xtb: false
+  optimize_cell_cp2k: false
+  # The pressure arm (#364): the same box under `opt_pressure: 10000.0` bar with
+  # `opt_cell_coupling: isotropic`. Written true for the same reason as the four
+  # above, so a round that falls back to `condition` keeps it on record. Its cost
+  # has no local reading: xtb is not installed on this host, and maxit is 3.
+  optimize_cell_pressure: false
+  # The two arms #365 and #373 opened, both on the xtb ethylene box so a batch
+  # costs seconds: `_ts` is the saddle search whose numerical curvature asks the
+  # lattice for twelve strained evaluations, `_meci_multiscale` is the gap arm
+  # whose two surfaces come from the pyscf centre and whose stress comes from the
+  # xtb outer layer. Written true for the same reason as the five above.
+  optimize_cell_ts: false
+  optimize_cell_meci_multiscale: false
+  # The ethylene-in-water box: the DIIS arm, the two crossing arms on the
+  # centre-supplies-surfaces / outer-supplies-stress plan, and the case that
+  # declares `anisotropic` instead of inheriting it.
+  optimize_cell_gdiis: false
+  optimize_cell_meci: false
+  optimize_cell_mecp: false
+  optimize_cell_aniso: false
+  # The pressure arm on that same free-shape box: 1700 bar asked of a lattice
+  # whose six components all move, so the two `Cell Stress` rows are the rms and
+  # maximum over the six components of `sigma + p I` instead of the mean normal
+  # stress the coupled branch substitutes (optimizer/base.py:533-546). It declares
+  # no bar pair of its own, so the schema's 40/60 judges it: the 100/100 the
+  # isotropic arm carries is that one example's ruling, not a house number.
+  optimize_cell_pressure_aniso: false
+  # The same box with no load on it, so the pressure arm's direction has a
+  # reference: `_check_cell_pressure` pairs a loaded drift with what this box does
+  # freely, matched on engine list, optimizer, declared coupling and starting
+  # volume. Rounds through 17 had the anisotropic half of that pair
+  # (`optimize_cell_aniso`) and printed `paired against nothing` for the isotropic
+  # leg. Cost is a round reading like the arms above - xtb is not on this host.
+  optimize_cell_iso: false
+  # The crossing pair on the 1581-atom force-field box: the centre is pyscf TDA on
+  # rows 1576-1581, the environment is LAMMPS on a mixed topology, and the box
+  # moves on the classical stress. Unlike the xtb and cp2k cases these two have a
+  # local reading - this host has `lmp_serial` and PySCF - so their wall clock is
+  # measured, not owed; see the CHANGELOG entry for the numbers.
+  optimize_cell_meci_lammps: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  optimize_cell_mecp_lammps: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  # The single-method gap arm on cp2k; the only example whose budget is not
+  # `_timeout`, for the reason its header gives (13 engine calls a step).
+  optimize_cell_gap_cp2k: false
+  multicenter_gradient: false
+  multicenter_md: false
+  # The QMMM ports of the two-center box: same 20-water LAMMPS topology,
+  # Molcas for each center. Off until the round that runs them reports its
+  # numbers; `sc_charge` costs one cheap solve per center per round, so it
+  # is opened on its own.
+  multicenter_qmmm_sp: false
+  multicenter_qmmm_sc_charge: false
+  multicenter_qmmm_md: false
+  # The band and the curvature carrier on the same two-center box. Both are
+  # off by default for the same reason as the three above; `num_freq` is the
+  # costlier of the two even with its 18-job mobile block.
+  multicenter_qmmm_mep: false
+  multicenter_qmmm_num_freq: false
+  # Two derivative couplings, one per center, on the same box. Cheap: one
+  # more electronic pass per center and no extra geometry.
+  multicenter_qmmm_nac_sp: false
+  # The two box-moving legs of the same two-center box, opened together with the
+  # cases they measure: `npt` integrates three steps under the barostat (the
+  # stress comes from the whole-system classical task alone), `cell` takes two
+  # framework steps on the six box entries. Both put the composite on a new box
+  # every evaluation, which is what the family had never run.
+  multicenter_qmmm_npt: false
+  multicenter_qmmm_cell: false
+  # The checkpoint pair. The round runs each leg as its own single process (the
+  # split half writes `<title>.rt` and stops; the resume line of its header is
+  # run by hand, which is how the constraint restart pair is carried too), so
+  # what a round buys here is the two legs' engine status, not the parity - the
+  # parity reading is local and is in `dev/methods/QMMM_DEVELOPMENT.md` §9.
+  # The band on the two-center box. 3 images x 2 rounds of the full
+  # seven-duty evaluation, so it is the costliest leg of the family after
+  # `num_freq`; `_timeout` is 2400 s now, which is what makes it runnable.
+  multicenter_qmmm_neb: false
+  # The three channel carriers on the same box: a crossing search over each
+  # center's pair, one FSSH ledger per center, and an excited-state
+  # minimization. Each is one to two steps, so they cost about a minute.
+  multicenter_qmmm_mecp: false
+  multicenter_qmmm_md_fssh: false
+  multicenter_qmmm_ex_opt: false
+  multicenter_qmmm_md_restart: false
+  multicenter_qmmm_md_restart_base: false
+  # The ONIOM counterparts: two ORCA high-level centers with a PySCF
+  # outer/mid and (three-layer) a LAMMPS low layer. The two-layer form is the
+  # new per-center outer-charge embedding; both are local to ORCA+PySCF.
+  multicenter_oniom2_orca_embedding_sp: false
+  multicenter_oniom2_orca_no_embedding_sp: false
+  multicenter_oniom2_orca_embedding_md: false
+  multicenter_oniom2_molcas_embedding_nac_sp: false
+  multicenter_oniom3_orca_embedding_sp: false
+  multicenter_oniom3_orca_embedding_npt: false
+  # Charged multi-center ONIOM: ammonium (+1) + neutral water, ORCA/PySCF.
+  multicenter_oniom2_orca_charged_sp: false
+  multicenter_oniom2_orca_charged_no_embedding_sp: false
+  multicenter_oniom2_orca_charged_md: false
+  multicenter_oniom3_orca_charged_sp: false
+  multicenter_oniom3_orca_charged_no_embedding_sp: false
+  multicenter_oniom3_orca_charged_md: false
+  # A PySCF center in a LAMMPS box, on the water written across a box face
+  # (dev/methods/PBC_DEVELOPMENT.md section 4.2). Off by default for the same
+  # reason as the two above: the host has to carry both engines, and these two
+  # need PySCF *and* LAMMPS rather than one.
+  multicenter_pbc_nve: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  multicenter_pbc_npt: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  md_bagel_fssh: true   # targeted validation 2026-11-11 (BAGEL rank fix)
+  # Opened on 2026-10-20 for the MOLCAS reader: `tools/verify.py` section C
+  # scans example legs only, so the skill case's calculation directory (which
+  # did run on the deployment) is outside its comparison scope. This 10-step
+  # C2H4/CASSCF example is the leg that leaves a MOLCAS directory where the
+  # reader can claim it.
+  md_molcas_fssh: true   # targeted validation 2026-11-11 (Molcas scratch fix)
+  # Three pairs of one spin manifold, declared in a NON-sorted order
+  # (`2 3, 1 2, 1 3`), and `nactype: nac` so the engine answers the couplings
+  # every step. The framework indexes `results['nac']` by that order, so this
+  # is the trajectory-level reading of row identity - the single-pair legs
+  # cannot tell a remap from an identity map (#448).
+  md_molcas_fssh_nac: true   # targeted validation 2026-11-11 (Molcas scratch fix)
+  # Round 18 (#449): the two carriers this round added - the per-step
+  # mixed-spin gradient channel and the mixed two-pass ESPF+NAC deck.
+  md_molcas_fssh_twospin: true   # targeted validation 2026-11-11 (Molcas scratch fix)
+  md_openqp_fssh: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  # Needs OpenQP 1.3: a spin-orbit run is answered by `socme` and the
+  # ladder-labelled exports (`energies_s`, `grad_s_2`), none of which the
+  # 1.2 deployment writes. Measured on 1.3.1 (5 FSSH steps of C2H4, MRSF
+  # sto-3g; the last step's 6-row socme returns [0.0943, 0.8181] cm-1 in
+  # soc_pair_map order [[1,2],[0,2]], i.e. both S/T couplings).
+  md_openqp_fssh_soc: false   # round 11 ran this row green; round 12 is the ORCA fixture retry
+  md_orca_fssh: false   # round 16 read it green; this round touches no orca code
+  # The dispatch topologies are qualified now that the runtime that runs them
+  # has a green full round behind it (#308). `md_local` and `md_parallel` need
+  # only PySCF on the host; `md_batch` submits each trajectory as a Slurm
+  # child, so it is the one to switch off if the cluster client misbehaves.
+# Switched off for the optimize round, not withdrawn: the reading above
+# still stands. `optimize_test: true` is what closes it while the master
+# reads `condition`, and `_runall: true` reopens it whatever this key
+# says.
+  md_local: false
+  # Opened for the 2026-10-20 mixed round: their `.input` legs are the
+  # carriers #395's writer fix still owes a reading for. `md_parallel` needs
+  # PySCF only; `md_batch` submits each child through Slurm and is skipped by
+  # name on a host without `sbatch`.
+  md_parallel: false
+  md_batch: false
+  # The initial-velocity control set: `md_velocity_excess` and its baseline
+  # twin state one kinetic energy two ways, `md_velocity_randvelo` is the
+  # temperature-only start that needs no frequency record, and
+  # `md_velocity_reset` is the rigid-rotation half a periodic box must not
+  # take. All four need only PySCF on the host and run in seconds.
+# Switched off for the optimize round, not withdrawn: the reading above
+# still stands. `optimize_test: true` is what closes it while the master
+# reads `condition`, and `_runall: true` reopens it whatever this key
+# says.
+  md_velocity_excess: false
+  md_velocity_excess_base: false
+  md_velocity_randvelo: false
+  md_velocity_reset: false
+  # The dissipation gate needs only PySCF too: its observable is the
+  # thermostat columns of md.ensemble on the gated steps.
+# Switched off for the optimize round, not withdrawn: the reading above
+# still stands. `optimize_test: true` is what closes it while the master
+# reads `condition`, and `_runall: true` reopens it whatever this key
+# says.
+  md_dissipate: false
+  md_lammps_nve: false
+  md_lammps_nvt_nh: false
+  md_lammps_nvt_nhc: false
+  md_lammps_nvt_csvr: false
+  md_lammps_npt_nh_berendsen: false
+  md_lammps_npt_nh_pr: false
+  md_lammps_npt_nh_mttk: false
+  md_lammps_npt_nhc_berendsen: false
+  md_lammps_npt_nhc_pr: false
+  md_lammps_npt_nhc_mttk: false
+  md_lammps_npt_csvr_berendsen: false
+  # #448: this key was set `true` for round B and the case **still did not
+  # run** - the `md_lammps_` family switch above it is `false`, and a family
+  # closed at that layer does not open on a per-case `true` (the three-layer
+  # rule). Neither round 15 nor round 16 has a row for it, so
+  # `var(ln V)/analytical` remains unread; the route actually taken is the
+  # one-off long probe (`buffer: 1`, 20000 steps) rather than a change to what
+  # this qualification case records.
+  md_lammps_npt_csvr_scr: false
+  # The constraint subsystem's functional cases, from the same reason as the
+  # ensemble set: qualified, registered, and switched off, because each needs
+  # the engine (PySCF or LAMMPS) that the execution host either has or has not.
+  # Enable one to re-run a constraint capability, or `_runall: true` to force
+  # the whole block on -- which is 39 inputs x 2 entry points per round.
+  constraint_wall_center: false
+  constraint_opt_surface: false
+  constraint_opt_periodic: false
+  constraint_sp_bias: false
+  constraint_md_shake: false
+  constraint_md_rattle: false
+  constraint_md_freeze: false
+  constraint_md_bias: false
+  constraint_md_metad: false
+  constraint_md_metad_rmsd: false
+  constraint_md_torsion: false
+  constraint_md_torsion_intermolecular: false
+  constraint_md_wall_nonsphere: false
+  constraint_md_restart: false
+  constraint_md_restart_base: false
+  constraint_md_periodic_shake: false
+  constraint_md_periodic_freeze: false
+  constraint_md_periodic_bias: false
+  constraint_md_periodic_wall: false
+  constraint_md_periodic_wall_box: false
+  constraint_md_periodic_wall_ellipsoid: false
+  constraint_md_periodic_wall_triclinic: false
+  constraint_md_periodic_torn_angle: false
+  constraint_md_periodic_metad_gaussian: false
+  constraint_md_periodic_metad_rmsd: false
+  constraint_md_periodic_restart: false
+  constraint_md_periodic_restart_base: false
+  constraint_md_periodic_nvt_shake: false
+  constraint_md_periodic_nvt_freeze: false
+  constraint_md_periodic_npt_shake: false
+  constraint_md_periodic_npt_shake_slow: false
+  # Opened for the 2026-10-20 mixed round: an angle held under a moving box
+  # (NPT), the vehicle for the angle/torsion + cell engine reading.
+  constraint_md_periodic_npt_angle: false
+  constraint_md_periodic_npt_bias: false
+  constraint_md_periodic_npt_freeze: false
+  constraint_md_periodic_npt_wall: false
+  # Opened for the 2026-10-20 mixed round: the periodic dihedral engine
+  # reading. It runs NVE, so the moving-box torsion still has no example;
+  # `constraint_md_periodic_npt_angle` is the moving-box half.
+  constraint_md_periodic_dihedral_ethanol: false   # closed for round 11 (#447): the coupling declaration and readback this round tests reaches no case outside the multistate band, and round `tmp_20261101_160x` ran these green at 1e-8
+  constraint_md_periodic_xh_ethanol: false   # closed for round 11 (#447): the coupling declaration and readback this round tests reaches no case outside the multistate band, and round `tmp_20261101_160x` ran these green at 1e-8
+  # The machine-learning trio, measured on this host at 18 s (fit), 8 s
+  # (test-set evaluation) and 62 s (4-point scan) -- all well inside the
+  # 1200 s backstop, so none of them gets a budget of its own.
+  #
+  # They are switched on because a host without the optional TensorFlow
+  # extra no longer fails here: the example planner reads the engine's
+  # manifest `requires` and reports a skip naming the package, the way
+  # the skill certification planner already does.
+# Switched off for the optimize round, not withdrawn: the reading above
+# still stands. `optimize_test: true` is what closes it while the master
+# reads `condition`, and `_runall: true` reopens it whatever this key
+# says.
+  nn_train: false
+  nn_predict: false
+  # The scan in both arms: `nn_grid_search` submits each point to Slurm (and
+  # is skipped by name where there is no client), `nn_grid_search_local` runs
+  # the same grid across a local worker pool, which is what carries a full
+  # round on any host that has TensorFlow.
+# Switched off for the optimize round, not withdrawn: the reading above
+# still stands. `optimize_test: true` is what closes it while the master
+# reads `condition`, and `_runall: true` reopens it whatever this key
+# says.
+  nn_grid_search: false
+  nn_grid_search_local: false
+# Tolerances (Hartree) judging the NVE examples in the runner: the
+# recorded Etot column must stay flat. etot_drift is the spread over
+# the trajectory; etot_drift_rate is the least-squares slope per
+# recorded frame and is only computed from RATE_MIN_FRAMES (50)
+# frames up, where it separates a systematic leak from the bounded
+# velocity-Verlet oscillation.
+  adaptive_single_local: false
+  adaptive_single_slurm: false
+  adaptive_oniom2_local: false
+  adaptive_oniom2_slurm: false
+  adaptive_qmmm_local: false
+  adaptive_qmmm_slurm: false
+  # One local carrier per analysis / exploration feature. The family
+  # switch above opens them all for the adaptive round; these keys keep
+  # the per-case switches available when it reads `condition`.
+  adaptive_analysis_pes_local: false
+  adaptive_analysis_gap_local: false
+  adaptive_analysis_trace_local: false
+  adaptive_analysis_coverage_local: false
+  adaptive_predict_primary_local: false
+  adaptive_udd_force_local: false
+  adaptive_udd_potential_local: false
+  adaptive_gap_cv_local: false
+  adaptive_gap_paper_local: false
+  adaptive_md_max_local: false
+  # maxmae carrier: the shipped reference band is narrowed by half, so the
+  # round's five labels are outliers; the gate removes the worst one,
+  # refits into NN-<title>-iter-2-r1 and passes on 0.0082 eV.
+  adaptive_quality_gate_local: false
+  adaptive_checks_nosh_local: false
+energy:
+  # Velocity Verlet's bounded oscillation at the example's own step:
+  # measured 1.732e-3 on both the resident and subprocess paths (500-step
+  # TIP3P NVE, 2026-11-08) and 1.401e-3 over 2000 steps. The failure this
+  # sentinel exists for is an order larger (7.0e-2 mis-assigned reference,
+  # 5.6e-2 zero gradient, 8.8e-3 leak), so 5e-3 keeps it with ~2.9x margin.
+  etot_drift: 0.005
+  etot_drift_rate: 1.0e-05
+# Tolerances judging the variable-cell (NPT) examples on what their box
+# did. volume_drift is max |V/V0 - 1| over the recorded cell frames,
+# temperature_drift is max |T_inst/T_target - 1| (first frame excluded,
+# which is the driven transient), cell_rotation_rad is the accumulated
+# turn of the simulation frame. These are test-side thresholds: they say
+# which runs are worth reading, not which physics is correct.
+#
+# The numbers are the gap in tmp_20260929_091941. volume_drift 0.25 is
+# kept because it is the only one that ever caught a run that passed while
+# sick (nh_mttk 0.575 in tmp_20260928_223009), and the healthiest finished
+# run of this round reaches 0.159. temperature_drift went 1.0 -> 3.0 after
+# this round failed two berendsen examples at 1.754/1.741 on boxes within
+# 16% of where they started: a cell doing work on the particles heats them,
+# which is ensemble behaviour, not a code hole. What a code hole looks
+# like is the same round's csvr_pr at 3.1e6 K, and 3.0 still fails it.
+box:
+  volume_drift: 0.25
+  temperature_drift: 3.0
+# Below the failure thresholds but high enough to state in the record.
+# cell_rotation_rad is 0.15 because the healthy examples already turn
+# 0.062-0.070 rad over 2 ps (5.7e-5 rad per step does not cancel), so a
+# tighter note would fire on every NPT run and stop meaning anything.
+box_notes:
+  volume_drift: 0.10
+  temperature_drift: 0.5
+  cell_rotation_rad: 0.15
+
+benchmark:
+  perf:
+    method: tully1
+    enabled: false
+    ninitcond: 100
+    ncpus: 4
+    substep: 20
+    nstep: 300
+    dt: 20
+  fssh:
+    - method: tully1
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      nactype: nac
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully2
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      nactype: nac
+      x0: -20
+      v0: 0.0075
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully3
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      nactype: nac
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    # Landau-Zener crossing family (dedicated fssh_lz1/2/3.yaml):
+    # the same physical setup as the gsh lz calibrations, scored
+    # against the analytic single-passage Landau-Zener probability
+    # (the wavepacket reference is reported for information only).
+    # The dedicated case files pin deco/rk4/nactype/gap; the new
+    # entries ship disabled until the scan confirms the verdict.
+    # x0 follows the benchmark-only Bohr convention.
+    - method: lz1
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      gap: 3.5
+      x0: -5
+      v0: 0.0498
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 4096
+      substeps: 10
+    - method: lz2
+      enabled: false
+      ncpus: 4
+      nstep: 38
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      gap: 3.5
+      x0: -5.4693
+      v0: 0.06833
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+    - method: lz3
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      deco: '0.1'
+      ninitcond: 100
+      gap: 3.5
+      x0: -4.4157
+      v0: 0.07762
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+  # kTDC calibrations (ktdc task module, unified ktdc.yaml +
+  # dedicated ktdc_lz1/2/3.yaml): the FSSH production setup with
+  # nactype ktdc (energy-only curvature coupling) replacing the
+  # exact qdm transition gradients, entry for entry mirrored from
+  # the fssh subsection so the two calibrations isolate the NAC
+  # source as the single difference.
+  ktdc:
+    - method: tully1
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      nactype: ktdc
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully2
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      nactype: ktdc
+      x0: -20
+      v0: 0.0075
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully3
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      nactype: ktdc
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    # Landau-Zener crossing family (dedicated ktdc_lz1/2/3.yaml):
+    # the same physical setup as the fssh lz calibrations, scored
+    # against the analytic single-passage Landau-Zener probability
+    # (the wavepacket reference is reported for information only).
+    # The dedicated case files pin deco/rk4/nactype/gap.
+    # x0 follows the benchmark-only Bohr convention.
+    - method: lz1
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      ninitcond: 100
+      deco: '0.1'
+      gap: 3.5
+      x0: -5
+      v0: 0.0498
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 4096
+      substeps: 10
+    - method: lz2
+      enabled: false
+      ncpus: 4
+      nstep: 38
+      dt: 20
+      deco: '0.1'
+      ninitcond: 100
+      gap: 3.5
+      x0: -5.4693
+      v0: 0.06833
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+    - method: lz3
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      deco: '0.1'
+      ninitcond: 100
+      gap: 3.5
+      x0: -4.4157
+      v0: 0.07762
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+  gsh:
+    - method: tully1
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully2
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      x0: -20
+      v0: 0.0075
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully3
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    # Landau-Zener linear crossing model (dedicated gsh_lz1.yaml):
+    # the textbook calibration target of the GSH EQ7/8 force
+    # reconstruction. The verdict scores the deviations from the
+    # analytic Landau-Zener probability (the wavepacket reference
+    # is reported for information only); the scan confirmed both
+    # metrics, so the entry ships enabled.
+    # x0 follows the benchmark-only Bohr convention (regular
+    # inputs take Angstrom).
+    - method: lz1
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      gap: 3.5
+      x0: -5
+      v0: 0.0498
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 4096
+      substeps: 10
+    # Half-linear Landau-Zener family (dedicated gsh_lz2/3.yaml):
+    # flat upper (lz2) / flat lower (lz3) surface; the verdict
+    # follows the lz1 analytic criteria. The parameters mirror the
+    # fssh lz entries so both algorithms run the identical problem;
+    # the new entries ship disabled until the scan confirms both
+    # metrics.
+    - method: lz2
+      enabled: false
+      ncpus: 4
+      nstep: 38
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      gap: 3.5
+      x0: -5.4693
+      v0: 0.06833
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+    - method: lz3
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      gap: 3.5
+      x0: -4.4157
+      v0: 0.07762
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+  # Landau-Zener surface hopping calibrations (lzsh task module,
+  # unified lzsh.yaml + dedicated lzsh_lz1/2/3.yaml). The LZSH
+  # kernels read the state energies and the timestep only (no
+  # gradients, no NAC vectors): the IC kernel derives the force
+  # difference from the curvature of the recorded avoided-crossing
+  # gap at the gate step. The tully entries mirror the gsh tully
+  # setup, the lz entries mirror the gsh lz entries so both
+  # algorithms run the identical problem; all new entries ship
+  # disabled until the deployment scan confirms the metrics.
+  # x0 follows the benchmark-only Bohr convention (regular inputs
+  # take Angstrom).
+  lzsh:
+    - method: tully1
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully2
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      x0: -20
+      v0: 0.0075
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    - method: tully3
+      enabled: false
+      ncpus: 4
+      nstep: 300
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      x0: -20
+      v0: 0.005
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      ngrid: 2048
+      substeps: 10
+    # Landau-Zener linear crossing model (dedicated lzsh_lz1.yaml):
+    # the textbook calibration target of the LZSH gap-curvature
+    # kernel. The verdict scores the deviations from the analytic
+    # Landau-Zener probability (the wavepacket reference is
+    # reported for information only).
+    - method: lz1
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      gap: 3.5
+      x0: -5
+      v0: 0.0498
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 4096
+      substeps: 10
+    # Half-linear Landau-Zener family (dedicated lzsh_lz2/3.yaml):
+    # flat upper (lz2) / flat lower (lz3) surface; the verdict
+    # follows the lz1 analytic criteria. The parameters mirror the
+    # gsh lz entries so both algorithms run the identical problem.
+    - method: lz2
+      enabled: false
+      ncpus: 4
+      nstep: 38
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      gap: 3.5
+      x0: -5.4693
+      v0: 0.06833
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+    - method: lz3
+      enabled: false
+      ncpus: 4
+      nstep: 45
+      dt: 20
+      ninitcond: 100
+      adjust: 1
+      reflect: 1
+      gap: 3.5
+      x0: -4.4157
+      v0: 0.07762
+      sigma: 0.5
+      model_mass: 2000
+      initial_state: 0
+      lz_a: 0.2712
+      lz_b: 0.0543
+      ngrid: 8192
+      substeps: 10
+
+# Adaptive sampling examples. Local variants run the three stages on
+  # this machine; Slurm variants hand MD/reference/training to the
+  # cluster and are opened only in a remote round.
+
+skills:
+  openqp_skill:
+    openqp_nproc: 2
+    openqp_path: /public/software/app/openqp-1.3
+    openqp_project: OPENQP
+    execution_mode: local
+    shell:
+    - export GCC_LIB=/public/software/compiler/gcc-11.3.0/lib64
+    - export MKL_LIB=/public/software/compiler/intel/oneapi/mkl/2025.2/lib/intel64/
+    - export MKL_INTERFACE_LAYER="@_MKL_INTERFACE_LAYER@"
+    - export MKL_THREADING_LAYER=SEQUENTIAL
+    - export LD_LIBRARY_PATH=$OPENQP_ROOT/lib64:$MKL_LIB:$GCC_LIB:$LD_LIBRARY_PATH
+    - export OMPI_MCA_btl_tcp_if_include=ib0
+    - module load compiler/openmpi/openmpi-4.1.6
+    keep_tmp: 1
+    test: false   # round 11 green; round 12 retries the orca fixtures only
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      hf_energy: false
+      hf_frequency: false
+      hf_geometry_optimization: false
+      hf_gradient: false
+      mrsf_energy: false
+      mrsf_frequency: false
+      mrsf_geometry_optimization: false
+      mrsf_gradient: false
+      mrsf_nac: false
+      mrsf_nonadiabatic_dynamics: false
+      mrsf_nonadiabatic_dynamics_soc: false
+      mrsf_soc: false
+      mrsf_soc_gradient: false
+      tddft_energy: false
+      tddft_geometry_optimization: false
+      tddft_gradient: false
+  bagel_skill:
+    arch: ''
+    bagel_nproc: 2
+    bagel_path: '/public/software/app/bagel/'
+    bagel_project: BAGEL
+    blas: ''
+    boost: ''
+    execution_mode: local
+    keep_tmp: 1
+    lapack: ''
+    mkl: ''
+    mpi: ''
+    scratch_path: ''
+    shell:
+    - export MKL_DEBUG_CPU_TYPE=5
+    - module load compiler/intel/mkl-mpi
+    - module load compiler/boost/boost-1.80.0
+    - export MV2_ENABLE_AFFINITY=0
+    - export BAGEL_NUM_THREADS=1
+    - export MKL_NUM_THREADS=1
+    # Round 15 (#448). The legs this round's readings need are opened by name
+    # below; a leg closed here is not withdrawn, only not what #448 changed.
+    test: true   # targeted validation 2026-11-11 (BAGEL rank fix): the long comment above is the stage posture
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      casscf_dipole: false
+      casscf_energy: false   # not a transition leg (#448)
+      casscf_frequency: false   # not a transition leg (#448)
+      casscf_geometry_optimization: false   # not a transition leg (#448)
+      casscf_gradient: false   # not a transition leg (#448)
+      casscf_meci: false   # not a transition leg (#448)
+      casscf_nac: false
+      casscf_transition_dipole: false
+      xmscaspt2_dipole: false
+      xmscaspt2_energy: false   # not a transition leg (#448)
+      xmscaspt2_frequency: false   # not a transition leg (#448)
+      xmscaspt2_geometry_optimization: false   # not a transition leg (#448)
+      xmscaspt2_gradient: false   # not a transition leg (#448)
+      xmscaspt2_meci: false   # not a transition leg (#448)
+      xmscaspt2_nac: false
+      xmscaspt2_transition_dipole: false
+  cp2k_skill:
+    execution_mode: local
+    keep_tmp: 1
+    cp2k_nproc: 4
+    cp2k_path: /public/software/app/cp2k-2025.2
+    cp2k_project: CP2K
+    scratch_path: ''
+    shell:
+    - module load compiler/gcc/gcc-11.3.0
+    - module load compiler/openmpi/openmpi-4.1.6
+    # Opened for the 2026-10-20 mixed round: the two numerical-stress
+    # certification cases. `dft_stress_num` is the control against the
+    # engine's analytical tensor; `tddft_stress_num` is the excited-state
+    # route (three states, iso scope) whose state-resolved tensor the gap
+    # example consumes. The other ten cases stay closed.
+    # Round 15 (#448) opened this block on `condition` for one leg only:
+    # `tddft_energy`, the transition channel that must answer one row per
+    # declared pair. It measured 64 s over all three modes (rows 179-181 of
+    # round `tmp_20261102_114641`). Two numerical-stress legs,
+    # `dft_stress_num` and `tddft_stress_num`, were already `true` here from an
+    # earlier round and came along when the block was opened: they answer
+    # nothing #448 changed and cost the round a measured 2203 s + 579 s of
+    # artifact span, which is why no row moved between 176 and 184 for 38
+    # minutes. Close them before re-opening this block for a transition reading.
+    test: false   # round 16 (#448): `tddft_energy` read green on round 15 (rows 179-181). Left `condition` it costs 2203 s + 579 s again for the numerical-stress legs, which answer nothing here
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      dft_energy: false
+      dft_gradient: false
+      dft_md: false
+      dft_opt_min: false
+      dft_stress: false
+      dft_stress_num: false
+      # the TDDFPT absorption table: one row per declared transition
+      # pair, and no row at all for a run that declared none (#448).
+      tddft_energy: false
+      tddft_gradient: false
+      tddft_gradient_water: false
+      tddft_st_energy: false
+      tddft_st_forces: false
+      tddft_stress_num: false
+  lammps_skill:
+    execution_mode: local
+    # The skill submits its own jobs for reference tasks the adaptive
+    # workflow stamps to slurm; the partition is a site setting, so it
+    # lives here and overrides an example's own value.
+    slurm_partition: long,short,express
+    keep_tmp: 1
+    lammps_nproc: 2
+    lammps_path: /public/software/app/lammps
+    lammps_project: h2o
+    lammps_shake: 0
+    lammps_units: real
+    scratch_path: ''
+    shake_fix_id: fShakeTIP3P
+    shake_keywords: ''
+    shell:
+    - module load compiler/gcc/gcc-11.3.0
+    - module load compiler/openmpi/openmpi-4.1.6
+    # Opened by ruling on 2026-10-17 for the engine-side cell profile of #366:
+    # `ff_optimize_cell` moved a box on a local `lmp_serial`, and a different
+    # engine build is exactly where the byte-level readings part company
+    # (`dev/TODO.md` records this machine's C10 diverging in the last digit
+    # while the deployment build was identical), so the case needs the
+    # deployment's engine. `true` rather than `condition`: this skill's eleven
+    # cases go together, and the other nine skills stay closed for an
+    # optimize round.
+    # Round 15 (#448): the legs this reading needs are opened by name; the
+    # rest of this skill's cases answer nothing #448 changed.
+    test: false   # round 16 (#448): its probe was read on round 15 (the refusal is quoted in the CHANGELOG); the #236 R2 arm stays shipped
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      ff_energy: false   # not a #448 leg
+
+      ff_gradient: false   # not a #448 leg
+
+      ff_gradient_persistent: false   # not a #448 leg
+
+      ff_npt: false   # not a #448 leg
+
+      ff_nve: false   # not a #448 leg
+
+      ff_nvt: false   # not a #448 leg
+
+      ff_optimize: false   # not a #448 leg
+
+      # The engine-side cell relaxation (`fix box/relax` beside
+      # `minimize`), #366.
+      ff_optimize_cell: false   # not a #448 leg
+
+      # One case per `fix box/relax` spelling: `iso` for the style the case
+      # above does not produce, `aniso_pressure` for the bar-to-atm
+      # conversion, which a zero-pressure line cannot show at all.
+      ff_box_relax_iso: false   # not a #448 leg
+
+      ff_box_relax_aniso_pressure: false   # not a #448 leg
+
+      ff_stress: false   # not a #448 leg
+
+      # QM/MM cases, one per profile. The two field cases run the probe
+      # (a non-periodic two-water cluster with real-space Coulomb and the
+      # shipped periodic water box with pppm); the energy case runs Flow 2
+      # on the cluster with a shipped Flow-1 `.esfp` and embedding=true, so
+      # the V/E handoff and the qmmm_el subtraction are exercised through
+      # the case runner, not only through tests/test_qmmm_engine.py. Every
+      # expected block is shape-only: a QM/MM total depends on the LAMMPS
+      # build's Ewald split and real-space table.
+      qmmm_cluster: false   # not a #448 leg
+
+      qmmm_cluster_energy: false   # not a #448 leg
+
+      qmmm_periodic: false   # not a #448 leg
+
+  molcas_skill:
+    execution_mode: local
+    keep_tmp: 1
+    molcas_mem: 4000
+    molcas_nproc: 1
+    molcas_path: /public/software/app/molcas-26/
+    molcas_print: 3
+    molcas_project: MOLCAS
+    scratch_path: ''
+    shell:
+    - module load compiler/gcc/gcc-11.3.0
+    - module load compiler/intel/mkl-mpi
+    slurm_command: ''
+    slurm_partition: express
+    slurm_time: '1:00:00'
+    # Opened for the multiscale round (2026-10-29): `condition` runs the
+    # curated ESPF / multistate matrix below while the legacy dynamics and
+    # optimization cases stay closed.
+    # Round 15 (#448). The legs this round's readings need are opened by name
+    # below; a leg closed here is not withdrawn, only not what #448 changed.
+    test: true   # targeted validation 2026-11-11 (Molcas scratch fix)
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      caspt2_energy: false
+      caspt2_ss_gradient: false
+      casscf_abinitio_dynamics: false
+      casscf_energy: false
+      casscf_espf_energy: false
+      casscf_espf_energy_field: false
+      casscf_espf_gradient: false
+      casscf_espf_gradient_field: false
+      casscf_espf_nac: false
+      # Round 18 (#449): the per-step mixed-spin channel's carrier.
+      casscf_gradient_twospin: false   # round 18/22 green
+      # Round 22: the two-pass ESPF+NAC skill case, reinstated in the
+      # sidecar dialect (`external_charges` -> `{project}.charge`); the
+      # framework carrier for the same shape is the example
+      # `multiscale_qmmm_embedding_nac`.
+      casscf_espf_nac_twospin: false   # round 22 green on all three carriers
+      casscf_espf_nac_field: false
+      casscf_espf_prop: false
+      casscf_espf_prop_field: false
+      casscf_espf_soc: false
+      casscf_espf_soc_field: false
+      casscf_frequency: false   # no gradient step in a frequency deck now (#448)
+      casscf_geometry_optimization: false
+      casscf_gradient: false
+      casscf_meci: false
+      casscf_mecp: false
+      casscf_nac: false
+      # two NAC pairs in two spin manifolds, declared triplet first: the deck
+      # prints the singlet group first, so this leg reads whether the engine's
+      # table order is the grouped one the parser inverts (#448).
+      casscf_nac_twospin: false
+      casscf_prop: false
+      casscf_properties_energy: false
+      casscf_soc: false
+      casscf_surface_hopping: false
+      hf_energy: false
+      rmscaspt2_gradient: false
+      xdwcaspt2_gradient: false
+      xmscaspt2_energy: false
+      xmscaspt2_espf_energy: false
+      xmscaspt2_espf_energy_field: false
+      xmscaspt2_espf_gradient: false
+      xmscaspt2_espf_gradient_field: false
+      xmscaspt2_espf_nac: false
+      xmscaspt2_espf_nac_field: false
+      xmscaspt2_espf_prop: false
+      xmscaspt2_espf_prop_field: false
+      xmscaspt2_espf_soc: false
+      xmscaspt2_espf_soc_field: false
+      xmscaspt2_gradient: false
+      xmscaspt2_nac: false
+      xmscaspt2_prop: false
+      xmscaspt2_soc: false
+  orca_skill:
+    execution_mode: local
+    keep_tmp: 1
+    mpi: ''
+    orca_mem: 1000
+    orca_nproc: 2
+    orca_path: '/public/software/app/orca_6_1_1_linux_x86-64_shared_openmpi418'
+    orca_project: ORCA
+    scratch_path: ''
+    shell: 'module load compiler/openmpi/openmpi-4.1.6'
+    test: false   # round 17 (#449) spends its hours on molcas: the grouped-deck legs below
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      dft_dipole: false
+      dft_energy: false
+      dft_frequency: false
+      dft_gradient: false
+      dft_opt_min: false
+      dft_opt_ts: false
+      tddft_energy: false
+      tddft_frequency: false
+      tddft_gradient: false
+      tddft_nac: false
+      tddft_opt_min: false
+      tddft_opt_ts: false
+      tddft_soc: false
+      tddft_transition_dipole: false
+  pyscf_skill:
+    execution_mode: local
+    # The skill submits its own jobs for reference tasks the adaptive
+    # workflow stamps to slurm; the partition is a site setting, so it
+    # lives here and overrides an example's own value.
+    slurm_partition: long,short,express
+    keep_tmp: 1
+    pyscf_path: import
+    pyscf_project: PYSCF
+    scratch_path: ''
+    test: false
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      dft_energy: false
+      dft_gradient: false
+      dft_hessian: false
+      dft_ir: false
+      dft_nmr: false
+      hf_energy: false
+      tda_energy: false
+      tda_gradient: false
+      tda_uv_vis: false
+  xtb_skill:
+    execution_mode: ''
+    keep_tmp: 1
+    scratch_path: ''
+    xtb_mem: 4000
+    xtb_thread: 1
+    xtb_path: '/public/software/app/xtb-6.7.1'
+    xtb_project: XTB
+    test: false
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      gfn0_energy: false
+      gfn0_gradient: false
+      gfn1_energy: false
+      gfn1_gradient: false
+      gfn2_energy: false
+      gfn2_gradient: false
+      gfn_ff_energy: false
+      gfn_ff_gradient: false
+      gfn_ff_stress: false
+  qdm_skill:
+    execution_mode: local
+    test: false   # round 11 green; round 12 retries the orca fixtures only
+    # The pytest scripts shipped in tests/ (the phase that
+    # runs before the cases).
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem.
+    # Read only while `test` is `condition`: a `true` there
+    # certifies every case whatever this map says.
+    tests:
+      tully1_energy: false
+      tully1_gradient: false
+      tully1_nac: false
+      tully1_reference: false
+      tully2_gradient: false
+      tully3_gradient: false
+  nn_pes_skill:
+    execution_mode: local
+    # The shared machine-learning block. These are the &NN keywords,
+    # spelled exactly as the classic input, the yaml example and the agent
+    # config spell them, so a host default set here is a keyword an input
+    # file can also write.
+    #
+    # modeldir holds one folder per ensemble ('energy_grad', 'nac'), and a
+    # serving run reads a folder a 'train' run wrote. The paths are left
+    # empty on purpose: they name a machine, not a calculation, and a
+    # run that needs a trained surface says so in its own input.
+    modeldir: ''
+    train_data: ''
+    # The test set a 'prediction' run measures the trained surface
+    # against, read by the same rules as train_data. Empty like the two
+    # paths above: it names a file on a machine, not a calculation.
+    pred_data: ''
+    train_mode: training
+    # A training file carries Hartree energies and Hartree/Bohr gradients
+    # and couplings, the framework's own convention. There is no unit keyword:
+    # the only rule a file has to satisfy is that its energy and its gradient
+    # describe one surface, and the trainer enforces that.
+    # Ensemble size. This is what decides how many member groups of a
+    # hyperparameter are read: fewer broadcast, surplus are ignored.
+    mult_nn: 2
+    nstate: 2
+    # Device index per training subprocess. ';' separates the ensemble
+    # members and one value broadcasts to all of them, exactly as a
+    # hyperparameter does; -1 asks for no device, which is what a CPU-only
+    # host has. This is a device list, not the original project's mode number.
+    gpu: '-1'
+    predict_batch_size: 64
+    # The role sections carry the per-member hyperparameters of one
+    # network family and are left to the container's own defaults here.
+    # An input file writes them either as its own block
+    #
+    #   &EG
+    #   depth        3
+    #   epo          2000;1500
+    #   loss_weights 1 1;1 10
+    #
+    # or, in a yaml, nested under the nn section:
+    #
+    #   nn:
+    #     eg:
+    #       depth: 3
+    #       epo: '2000;1500'
+    #
+    # ';' is the ensemble member in every spelling; a keyword written once
+    # serves both members. The three blocks name the three ensembles: 'eg'
+    # fits energies and gradients, 'nac' the couplings, and 'soc' the
+    # spin-orbit values, which the energy family serves as scalars in cm-1.
+    eg: {}
+    nac: {}
+    soc: {}
+    # Off for the optimize round. It was on for the certification run: this
+    # skill needs the optional neural network extra (tensorflow>=2.20), and a
+    # machine without it surfaces as a diagnostic skip naming the requirement,
+    # never as a pass. What closing it buys is only that the round spends
+    # nothing on the training route; it no longer hides the readings. #359 put
+    # the pytest phase behind `runtime_tests` alone, so the files below are
+    # still planned and run with `test: false` -- including the nn ones, whose
+    # numeric cases train a model on the fly inside pytest.
+    test: false   # round 11 green; round 12 retries the orca fixtures only
+    # The pytest scripts shipped in tests/, planned whether or not `test` is
+    # open (certification/planner.py reads this key and nothing else for that
+    # phase). The TensorFlow-free contract tests always pass; the numeric ones
+    # skip with a named reason on a host without the extra. `false` here closes
+    # them and lists each as a skipped task naming this key.
+    runtime_tests: false
+    # One switch per test case YAML, keyed by its file stem. The cases run in
+    # name order out of one shared directory, so the number in a stem is the
+    # role it plays: 00/02/04 fit an ensemble, 01/03/05 serve that folder,
+    # and 06 serves it by jobtype ('prediction') rather than by profile name.
+    tests:
+      00_mlp_eg_train: false
+      01_mlp_eg_gradient: false
+      02_mlp_nac2_train: false
+      03_mlp_nac2_nac: false
+      04_mlp_e_soc_train: false
+      05_mlp_e_soc: false
+      06_mlp_eg_predict: false
+# Framework-level Slurm directives: what a dispatched child runtime asks the
+# cluster for. Read by kernel/environment.Environment.get_slurm, frozen onto
+# the run as state.pmd.environment.slurm, and written into the child's
+# slurm.sh by workflow/dispatch/slurm_run. Not the skills' own slurm_*
+# keywords, which belong to each skill's self-submission path.
+# An input may restate any of these keys in its own top-level `slurm:` block
+# (or the classic `&SLURM` section); the merge is per key, so a run that pins
+# only `time` keeps the rest of this section. The merge is for that run
+# alone.
+# A key left '' writes no directive, and `exclusive: false` writes none
+# either: the classic text states it as `exclusive false`, which is read back
+# as false rather than as a non-empty string.
+slurm:
+  account: ''
+  array: ''
+  constraint: ''
+  cpus_per_task: 1
+  error: slurm-%j.err
+  exclusive: false
+  extra: ''
+  gres: ''
+  job_name: pyrai3md
+  mail_type: ''
+  mail_user: ''
+  # Per grouped job. The local-pool adaptive examples hold five TensorFlow
+  # workers plus their LAMMPS services; 5G hit the cgroup ceiling
+  # (max_usage 5.37 GB, oom_kill 1) in round tmp_20261111_103921 and the
+  # resident service died, so the job waited forever for the next force.
+  mem: 16G
+  mem_per_cpu: ''
+  nodes: 1
+  # Slots per grouped job. The local-pool adaptive examples run five
+  # concurrent trajectories with two LAMMPS ranks each (md_multipool 5 x
+  # lammps_nproc 2), so a one-slot allocation made their resident service
+  # fail on "not enough slots" in round tmp_20261111_101848; 10 covers
+  # that pool and cp2k's four ranks.
+  ntasks: 10
+  output: slurm-%j.out
+  # Accepted partition list, in preference order: Slurm places each job on
+  # whichever of these has room. `express` caps wall time at 24 h, well above
+  # the 3 h job limit here.
+  partition: long,short,express
+  qos: ''
+  # Per grouped job. With one job per carrier leg and per example
+  # carrier, the longest measured task is cp2k dft_stress_num at 939 s
+  # (round tmp_20261110_093321); an hour leaves room for a chain's few
+  # short tasks.
+  time: '1:00:00'

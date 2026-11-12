@@ -1,0 +1,67 @@
+# Nudged elastic band in a periodic cell, placed by the geodesic
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb_pbc_geodesic.yaml
+#
+# The two arms that had never met: `neb_interpolate: geodesic` (the
+# Morse-scaled redundant-internal-coordinate port in `utilities/geodesic.py`)
+# and a periodic band (`path_neb_xtb.yaml`). The geodesic builds its metric from
+# the band's pair distances, so every pair is taken in the nearest periodic
+# image of each image's own cell, the chain is aligned before it is smoothed,
+# and the images still carry `Lattice="..."` frames. `path_neb_xtb` walks the
+# same box with a linear guess, so the two files differ in one keyword and the
+# initial barrier can be read against each other.
+#
+# The cell is the 10 A box the ethylene endpoints declare, which is large
+# enough that no pair crosses the boundary at the endpoints: the minimum-image
+# reading is exercised by the code path, not by a pair that straddles a face
+# (the same trade the header of `path_neb_xtb` states).
+#
+# Functional test: `maxit` is the budget, not a convergence claim.
+#
+# What it needs from the host: xtb (GFN-FF).
+
+control:
+  title: path_neb_pbc_geodesic
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_pbc_reactant.xyz
+  neb_product: path_pbc_product.xyz
+  neb_images: 3
+  neb_interpolate: geodesic
+  neb_geodesic_threshold: 3.0
+  neb_geodesic_scaler: 1.7
+  neb_geodesic_min_neighbors: 4
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.330000000]
+  - [0.000000000, 0.920000000, 0.000000000]
+  - [0.000000000, -0.920000000, 0.000000000]
+  - [0.000000000, 0.920000000, 1.330000000]
+  - [0.000000000, -0.920000000, 1.330000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

@@ -1,0 +1,41 @@
+# Constraint example for the merged constraint subsystem.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_sp_bias.yaml
+control:
+  title: constraint_sp_bias_example
+  jobtype: gradient
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  cv_bond: [[1, 2]]
+  cv_name: oh
+  bias_cv: oh
+  bias_cv_ref: 0.85
+  bias_cv_fc: 0.05
+  bias_id: hold_oh
+  wall_type: sphere
+  wall_sphere_radius: 1.2
+  wall_atoms: 3
+  wall_center: [[0.0, 0.0, 0.0]]
+  wall_fc: 0.01
+  wall_id: vessel

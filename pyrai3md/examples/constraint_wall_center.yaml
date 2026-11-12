@@ -1,0 +1,88 @@
+# Constraint example for the merged constraint subsystem.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_wall_center.yaml
+#
+# This is the archived `cavity` input migrated to the wall that replaced it. The
+# old flat keys (cavity / factor / scale / shape / center_type) are refused by
+# name now, and each one has a wall spelling:
+#
+#   cavity [2.5, 2.5, 2.5]  -> geometry ellipsoid with semiaxes 2.5 2.5 2.5
+#                              (a cuboid radius would become `lengths` at twice
+#                              the number: a radius is a half edge)
+#   factor 4                 -> power 4 (the old code floored it at 2 in silence;
+#                              below 2 is refused here)
+#   scale 0.005              -> force_constant 0.005, which with `law: soft`
+#                              converts as an energy and nothing else
+#   shape ellipsoid          -> law soft, whose argument is the dimensionless
+#                              squared axis ratio the cavity used
+#   center_type mass         -> target com, whose center is captured at the
+#                              reference geometry and then fixed
+#   groups [[1, 3]]          -> molecules [[1, 2, 3]]: the atom numbers
+#                              themselves, not a count
+#   no groups at all         -> molecules with a trailing size of 1, because the
+#                              archived cavity treated every atom of its selection
+#                              as a molecule of one. Leaving `molecules` out here
+#                              would mean something else: the wall's own default
+#                              is the whole selection as one group, which with one
+#                              molecule is the center itself and so holds nothing.
+#                              That is why this case writes 1 2 3 3 -> 1 2 3 1.
+#
+# The same run in the classic text block reads
+#
+#   &constraint
+#     wall_type ellipsoid
+#     wall_ellipsoid_semiaxes 2.5 2.5 2.5
+#     wall_fc 0.005
+#     wall_power 4
+#     wall_law soft
+#     wall_target com
+#     wall_groups 1 2 3 1
+#
+# What is deliberately NOT reproduced: the archived code counted the centroid
+# term once per atom of the molecule while its force counted it once, so this
+# three-atom water's migrated energy is the old number divided by 3. The force is
+# unchanged (dev/methods/CONSTRAINT_DEVELOPMENT.md section 18, defect D-15; the
+# measured relation is in test_constraint_legacy_equivalence.py).
+control:
+  title: constraint_wall_center_example
+  jobtype: md
+  gl_seed: 20260929   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 5
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  wall_type: ellipsoid
+  wall_ellipsoid_semiaxes: [[2.5, 2.5, 2.5]]
+  wall_groups: [[1, 2, 3, 1]]
+  wall_law: soft
+  wall_power: 4
+  wall_fc: 0.005
+  wall_target: com
+  wall_id: water_cage

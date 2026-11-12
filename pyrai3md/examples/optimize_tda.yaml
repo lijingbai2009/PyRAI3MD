@@ -1,0 +1,44 @@
+# Excited-state geometry optimization of the S1 state (TDA)
+# Topology: Dispatcher local / Workflow iterative / Calculator local
+# Run: pyrai3md optimize_tda.yaml
+#
+# state_i selects the optimized electronic state (0-based, S1 = 1).
+# The pyscf method must provide excited-state gradients (tda/tddft).
+# Note: the ethylene S1 (pi-pi*) surface is repulsive along the C-C
+# stretch; this example exercises the state-aware optimization flow
+# with a bounded step limit rather than a physical minimum.
+
+control:
+  title: optimize_tda_example
+  jobtype: optimize
+  theory: [pyscf]
+
+optimize:
+  method: minima
+  state_i: 1
+  maxit: 30
+  opt_energy: 1e-6
+  opt_grms: 3e-4
+  opt_gmax: 4.5e-4
+  opt_drms: 1.2e-3
+  opt_dmax: 1.8e-3
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-2.268212933,  0.000000000, -2.898503391]
+  - [-2.268212933,  0.000000000, -1.568345391]
+  - [-2.268212933,  0.923341000, -3.471453391]
+  - [-2.268212933, -0.923341000, -3.471453391]
+  - [-2.810939156,  0.746998561, -0.995395391]
+  - [-2.810939156, -0.746998561, -0.995395391]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [2]
+  spin: [0]
+
+pyscf:
+  method: tda
+  basis: sto3g
+  scratch_path: ./scratch

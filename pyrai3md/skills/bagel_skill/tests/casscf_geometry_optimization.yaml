@@ -1,0 +1,36 @@
+version: 1.0
+name: casscf_geometry_optimization_test
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  profile: casscf_geometry_optimization
+  method: casscf
+  basis: sto-3g
+  nact_elec: 2
+  nact_orb: 2
+  nclosed: 7
+  active: [8, 9]
+  target_states: [0]
+  opt_state_i: 0
+  maxit_opt: 5
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [3]
+    tolerance: 1e-6
+  coordinates:
+    value: null
+    shape: [6, 3]
+    tolerance: 1e-6

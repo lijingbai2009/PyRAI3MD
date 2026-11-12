@@ -1,0 +1,89 @@
+# Neural network potential training: one fit of a small energy+gradient
+# ensemble against a shipped label file.
+# Topology: Dispatcher local / Workflow single (node `train`) / Calculator local
+# Run: pyrai3md nn_train.yaml
+# Fixture: egs_small.json, shipped in this directory (24 geometries of an
+# 18-atom molecule; Hartree energies and Hartree/Bohr gradients, the
+# framework's own label convention). The qualification runner stages it
+# into the run directory the way it stages a LAMMPS topology.
+#
+# What this example is for: the training path end to end through the
+# framework's entry points, and the record it must leave behind. Widths and
+# epochs are small on purpose -- the point is that the fit runs, that its
+# per-member validation error is read back from the folder the fit wrote,
+# and that the run states a verdict rather than finishing silently. A
+# surface fitted in ten epochs is not a surface anyone would run dynamics
+# on, and nothing here claims it is: the log prints the measured error,
+# which is large by design.
+#
+# `modeldir: ./nn_eg` is a relative path by intent. `nn_predict.yaml` is
+# the other half of this pair: the qualification runner plans the two into
+# one shared directory and in this order, so the evaluation reads the
+# folder this fit writes. Run standalone, do the two in the same directory.
+#
+# Cost: ~20 s on the test environment (two ensemble members trained as parallel
+# subprocesses, 10 and 8 epochs). `&train multipool` states the pool the
+# node's own dispatch runs on.
+
+control:
+  title: nn_train
+  jobtype: train
+  theory: [nn]
+
+nn:
+  method: mlp_eg
+  execution_mode: local
+  scratch_path: ./scratch
+  nn_project: NN_EG
+  # The folder one ensemble per role is written into. Nothing is read
+  # here: a training request creates what it replaces, and a request that
+  # would overwrite an existing trained folder is refused by the skill.
+  modeldir: ./nn_eg
+  mult_nn: 2
+  target_states: [0, 1]
+  train_data: ./egs_small.json
+  eg:
+    depth: 2
+    nn_size: 24
+    epo: '10;8'
+    batch_size: 8
+    val_split: 0.25
+    epostep: 5
+    loss_weights: '1 10'
+
+# The training node's own dispatch keywords. A fit is the longest call in
+# the package, so this is the section that decides whether it runs here or
+# is handed to the cluster; before the node existed the jobtype could only
+# inherit the class defaults.
+train:
+  multipool: 1
+
+atoms: [C, C, C, C, C, C, H, H, H, H, H, H, C, H, C, C, O, H]
+coordinates:
+  - [-2.9083132, 7.8411096, -0.0702194]
+  - [-1.6931105, 8.4133693, 0.6512565]
+  - [-3.8459958, 8.3900949, 1.1666596]
+  - [-1.0216257, 7.4429598, 1.6028474]
+  - [-2.4619556, 8.9089639, 1.8499307]
+  - [-1.6874987, 7.8364748, 2.6894182]
+  - [-2.2625545, 9.9333107, 2.3056992]
+  - [-2.9383251, 7.9309740, -1.1471826]
+  - [-1.1933051, 9.1360830, 0.0428741]
+  - [-4.7047318, 9.0921007, 1.0200999]
+  - [-0.3820126, 6.5675405, 1.6453516]
+  - [-1.5874013, 7.4083646, 3.5851790]
+  - [-3.3532789, 6.4541791, 0.3104579]
+  - [-3.2106000, 5.3449863, -0.0853950]
+  - [-4.1464620, 6.9244487, 1.3870082]
+  - [-4.8658762, 6.2234127, 2.4157030]
+  - [-5.1800004, 6.8168049, 3.4481760]
+  - [-4.8186387, 5.0921524, 2.2211712]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  # Two singlet roots. The state count is derived from `ci` (the nn skill
+  # fits one output channel per electronic state), and the coupling pairs
+  # the framework derives for a two-state system are validated against it.
+  ci: [2]
+  spin: [0]

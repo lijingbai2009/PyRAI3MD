@@ -1,0 +1,53 @@
+# Minimum energy path with a held bond length
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_mep_bond.yaml
+#
+# path_mep.yaml with a declared strict condition: the C-N length is held at its
+# anchor for the whole walk. The walker reuses the framework's position solve
+# (`constraints/runtime.constrain_state`, called by the workflow after every
+# probe) and its tangential split (`constraint_split`, read at the evaluation),
+# so the criteria are judged on the gradient the held bond cannot absorb and the
+# sphere's bookkeeping follows the geometry the backend actually evaluated.
+#
+# What to read: `path_geom.xyz` - every frame's C-N is the first frame's, to the
+# solve's tolerance. The walker's own arm of this is pinned by
+# `qualification/verification/test_path.py`; the recomputation is the runner's
+# post-check.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_mep_bond
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 6
+  path_radius: 0.15
+  path_inner_maxit: 12
+  path_constraint: sphere
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.174177304, 0.000000000, -0.007583040]
+  - [0.045975463, 0.000000000, 0.002049630]
+  - [-0.044762048, 0.000000000, 1.262686200]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_length: angstrom
+  shake_bond: [[2, 3]]
+  shake_tol: [1e-10]
+  shake_id: [cn]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

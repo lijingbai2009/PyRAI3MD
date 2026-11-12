@@ -1,0 +1,119 @@
+# Multi-center ONIOM nonadiabatic MD (two openqp MRSF centers in an xtb environment)
+# Topology: Dispatcher local / Workflow single / Calculator local (multi-center ONIOM2)
+# Run: pyrai3md multicenter_md.yaml
+#
+# Two high-level centers (atoms 1-6 and 7-12, each a C2H4) are treated
+# with openqp MRSF (3 singlets S0/S1/S2 per center); the full 60-atom
+# system (the two centers plus the water environment) is the low-level
+# ONIOM baseline computed with xtb. The framework AIMD loop propagates
+# the geometry while the FSSH electronic stepper (sfhp: fssh) hops
+# each center independently, with the kTDC coupling estimated from
+# the per-center energy curvature. The center-dimensioned molecule/md
+# keywords use the classic ';'-separated string form (docs
+# MULTICENTER_DEVELOPMENT.md section 4.2): external indices, root
+# included, are 1-based, so `root: "1; 2"` starts center 1 on its S0
+# and center 2 on its S1.
+
+control:
+  title: multicenter_md_example
+  jobtype: md
+  theory: [openqp, xtb]
+
+atoms: [C, C, H, H, H, H, C, C, H, H, H, H,
+        O, H, H, O, H, H, O, H, H, O, H, H,
+        O, H, H, O, H, H, O, H, H, O, H, H,
+        O, H, H, O, H, H, O, H, H, O, H, H,
+        O, H, H, O, H, H, O, H, H, O, H, H]
+coordinates:
+  - [-0.272894655, -1.857671868, -4.415598669]
+  - [-0.272894655, -1.857671868, -3.085440669]
+  - [-0.272894655, -0.934330868, -4.988548669]
+  - [-0.272894655, -2.781012868, -4.988548669]
+  - [-0.272894655, -0.934330868, -2.512490669]
+  - [-0.272894655, -2.781012868, -2.512490669]
+  - [-2.497553412, -2.107521158,  5.276378853]
+  - [-2.497553412, -2.107521158,  6.606536853]
+  - [-2.497553412, -1.184180158,  4.703428853]
+  - [-2.497553412, -3.030862158,  4.703428853]
+  - [-2.497553412, -1.184180158,  7.179486853]
+  - [-2.497553412, -3.030862158,  7.179486853]
+  - [-3.865596886,  1.434214437, -1.691195885]
+  - [-3.865596886,  2.193551437, -1.095152885]
+  - [-3.865596886,  0.674877437, -1.095152885]
+  - [ 1.083999636,  1.120098754,  3.464790698]
+  - [ 1.083999636,  1.879435754,  4.060833698]
+  - [ 1.083999636,  0.360761754,  4.060833698]
+  - [ 2.172589696,  1.570484154, -0.894995005]
+  - [ 2.172589696,  2.329821154, -0.298952005]
+  - [ 2.172589696,  0.811147154, -0.298952005]
+  - [ 1.011671992, -4.878885242,  3.172140841]
+  - [ 1.011671992, -4.119548242,  3.768183841]
+  - [ 1.011671992, -5.638222242,  3.768183841]
+  - [-5.529517808, -4.897388485,  7.973421544]
+  - [-5.529517808, -4.138051485,  8.569464544]
+  - [-5.529517808, -5.656725485,  8.569464544]
+  - [-0.026604917, -4.805211525,  8.774935876]
+  - [-0.026604917, -4.045874525,  9.370978876]
+  - [-0.026604917, -5.564548525,  9.370978876]
+  - [ 3.571758880,  1.555608906, -6.453022420]
+  - [ 3.571758880,  2.314945906, -5.856979420]
+  - [ 3.571758880,  0.796271906, -5.856979420]
+  - [-2.747185234,  1.466126692, -7.328544615]
+  - [-2.747185234,  2.225463692, -6.732501615]
+  - [-2.747185234,  0.706789692, -6.732501615]
+  - [-4.882836711,  1.115711196,  2.646268490]
+  - [-4.882836711,  1.875048196,  3.242311490]
+  - [-4.882836711,  0.356374196,  3.242311490]
+  - [-5.922090244,  0.752186037,  8.396680530]
+  - [-5.922090244,  1.511523037,  8.992723530]
+  - [-5.922090244, -0.007150963,  8.992723530]
+  - [-4.213769672, -4.604401819, -1.737952456]
+  - [-4.213769672, -3.845064819, -1.141909456]
+  - [-4.213769672, -5.363738819, -1.141909456]
+  - [-2.987769274, -4.589029638, -7.461210192]
+  - [-2.987769274, -3.829692638, -6.865167192]
+  - [-2.987769274, -5.348366638, -6.865167192]
+  - [ 0.175997083,  0.899891041,  9.219914609]
+  - [ 0.175997083,  1.659228041,  9.815957609]
+  - [ 0.175997083,  0.140554041,  9.815957609]
+  - [-4.953754937, -4.993543267,  2.328184605]
+  - [-4.953754937, -4.234206267,  2.924227605]
+  - [-4.953754937, -5.752880267,  2.924227605]
+  - [ 1.948602325, -4.640782967, -0.931285694]
+  - [ 1.948602325, -3.881445967, -0.335242694]
+  - [ 1.948602325, -5.400119967, -0.335242694]
+  - [ 3.273213013, -4.492528563, -6.662884482]
+  - [ 3.273213013, -3.733191563, -6.066841482]
+  - [ 3.273213013, -5.251865563, -6.066841482]
+
+molecule:
+  # charges/multiplicity are per-center region electronic structure.
+  # A single scalar broadcasts to every center (both centers neutral
+  # singlet here), so the full-system ONIOM baseline L(real) aggregates
+  # to charge 0 / singlet. To set centers independently use the
+  # ';'-separated form, e.g. `charges: "0; -1"` and
+  # `multiplicity: "1; 2"` (L(real) then = charge -1, and the spin
+  # pairs off as (0 + 1) mod 2 + 1 = doublet).
+  charges: 0
+  multiplicity: 1
+  highlevel: "1-6; 7-12"
+  ci: "3; 3"
+  spin: "0; 0"
+  coupling: "1 2, 2 3, 1 3; 1 2, 2 3, 1 3"
+
+md:
+  root: "1; 2"
+  initcond: 0
+  ninitcond: 1
+  sfhp: fssh
+  nactype: ktdc
+  step: 10
+  size: 20.67
+
+openqp:
+  method: mrsf
+  basis: sto-3g
+  functional: bhhlyp
+
+xtb:
+  method: gfn2

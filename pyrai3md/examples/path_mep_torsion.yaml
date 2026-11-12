@@ -1,0 +1,51 @@
+# Minimum energy path with a held torsion
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_mep_torsion.yaml
+#
+# The third strict condition, on a four-atom system: hydrogen peroxide with the
+# H-O-O-H dihedral held while one O-H is stretched. A torsion needs four atoms,
+# which is why this case is not the three-atom HCN the other constraint examples
+# use; the machinery is the same one (`shake_dihedral` goes through the same
+# position solve and the same tangential split as a held length).
+#
+# What to read: `path_geom.xyz` - every frame's dihedral is the first frame's, to
+# the solve's tolerance.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_mep_torsion
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 6
+  path_radius: 0.12
+  path_inner_maxit: 12
+  path_constraint: sphere
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [O, O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.475000000]
+  - [1.050000000, 0.000000000, -0.300000000]
+  - [-0.665000000, 0.665000000, 1.775000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_angle: degree
+  shake_dihedral: [[3, 1, 2, 4]]
+  shake_tol: [1e-10]
+  shake_id: [hooh]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

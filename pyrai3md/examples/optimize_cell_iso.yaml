@@ -1,0 +1,174 @@
+# The zero-pressure twin of the shape-preserving pressure leg: this box with no
+# load on it, which is the only thing ask 2 of `_check_cell_pressure` can compare
+# a loaded drift against.
+#
+# Run: pyrai3md optimize_cell_iso.yaml
+#
+# `optimize_cell_pressure.yaml` asks a box to hold a pressure; whether the load
+# points the right way is not readable from that run alone, because this box
+# starts more compressed than 1 kbar and so rests at a LARGER volume than the one
+# it is handed (#391, from round `tmp_20261018_200317`: |sigma| = 1688.1 bar at the
+# end of its own unloaded relaxation). The pairing half of the clause therefore
+# looks for the same box relaxing freely in the same round. Until this file the
+# anisotropic side had that reference - `optimize_cell_aniso`, and the round
+# printed `paired against optimize_cell_aniso, which drifted 17.087668 A^3
+# unloaded: this leg drifted 15.730721 A^3 under 1000.0 bar` for it - and the
+# isotropic side had nothing, so the loaded isotropic leg said `paired against
+# nothing` and its direction rested on the residual coming down alone.
+#
+# Identity with the pressure leg is four declared items and one measurement: the
+# same engine list (`[xtb]`), the same optimizer (`minima`), the same coupling
+# (`isotropic`), the same starting volume (10.5 A cube, 1157.625 A^3), and
+# `opt_pressure` absent. Those are exactly what
+# `runner.py::_natural_motion_of_the_same_box` matches on, and a twin on a
+# different engine list is refused on purpose: an unloaded drift is a property of
+# the scoring function, so a cp2k arm of this same YAML would not be what this
+# box does freely.
+#
+# What this case has to show, and what it would mean if it did not. Under
+# isotropic coupling the lattice half of a step is confined to the single
+# direction that scales the three row lengths together
+# (`optimizer/base.py::_cell_direction`, :757-780), so their RATIOS cannot move
+# and the `[COUPLING]` verdict (`runner.py::_check_cell_shape`) expects
+# `shape_ratio_change` under `CELL_SHAPE_FLOOR` = 1e-5 - the two isotropic legs of
+# round 16 and 17 read it as an exact 0.0. A run of this file whose ratios moved
+# would not be a loose relaxation: it would be the projection missing from the
+# step, the same defect `optimize_cell_pressure_aniso.yaml` looks for from the
+# other side. The volume still has to move (`drift > 0`), or the box was relaxed
+# against nothing at all.
+#
+# The system is the carrier #382/#388/#389 built for the pressure pair, copied
+# byte for byte: one ethylene inside 25 waters in a 10.5 A cube, 81 atoms, Packmol
+# 21.2.1 with a 2.3 A intermolecular exclusion, 26 connected components under this
+# package's own periodic perception, closest intermolecular contact 2.518 A,
+# density 0.654 g/cm3. It declares no `opt_cs*` pair because nothing here is
+# judged against one: an unloaded box is judged on the machinery and on being a
+# reference, and its thresholds are the schema defaults.
+#
+# Cost is NOT measured on this environment: xtb is not installed here. Round
+# `tmp_20261019_122659` is the first reading of an unloaded isotropic drift, and
+# it is the number ask 2 was written to need: volume 1157.625 -> 1175.2393 A^3,
+# a drift of 17.614350 A^3, with the residual |sigma| falling 12518.074 ->
+# 285.271 bar over the same five steps and `Converged: False` at the last one.
+# The pressure leg it pairs with drifted 15.195667 A^3 under 1700.0 bar, so the
+# load took 2.418683 A^3 off this motion and the clause read pass on both legs.
+# That round also retires the caveat the same paragraph used to carry about the
+# load: 1700 bar was still an extrapolation from the 1688.1 bar above when the
+# two files were written, and the pair of readings now in this file is what
+# running it produced - the extrapolation pointed the right way, and neither leg
+# stopped on the rest point, which is why asks 3 and 4 are printed and not
+# judged.
+
+control:
+  title: optimize_cell_iso_example
+  jobtype: optimize
+  theory: [xtb]
+
+atoms: [C, C, H, H, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H]
+coordinates:
+  - [5.250000000, 5.250000000, 4.591334000]
+  - [5.250000000, 5.250000000, 5.908666000]
+  - [5.250000000, 6.164369000, 4.024332000]
+  - [5.250000000, 4.335631000, 4.024332000]
+  - [5.250000000, 6.164369000, 6.475668000]
+  - [5.250000000, 4.335631000, 6.475668000]
+  - [5.576084000, 9.855901000, 8.013593000]
+  - [5.416261000, 9.022565000, 8.473883000]
+  - [5.663960000, 10.499206000, 8.727944000]
+  - [3.519230000, 6.339176000, 10.537341000]
+  - [2.746866000, 6.894032000, 10.371664000]
+  - [4.264994000, 6.932725000, 10.384382000]
+  - [0.241396000, 6.732594000, 5.248050000]
+  - [1.195199000, 6.752267000, 5.100629000]
+  - [0.004097000, 5.810166000, 5.090965000]
+  - [0.653619000, 1.091436000, 3.903576000]
+  - [0.003531000, 1.137445000, 4.615706000]
+  - [0.122559000, 1.179630000, 3.102292000]
+  - [4.741443000, 3.027199000, 0.018296000]
+  - [4.768520000, 2.063743000, 0.071953000]
+  - [5.666155000, 3.288102000, 0.111562000]
+  - [2.785103000, 10.081384000, 7.760958000]
+  - [1.907082000, 9.698112000, 7.879460000]
+  - [3.143185000, 10.115505000, 8.656766000]
+  - [3.512016000, 2.101118000, 8.376901000]
+  - [4.055242000, 1.765790000, 7.652801000]
+  - [2.616738000, 2.090025000, 8.016050000]
+  - [5.243747000, 0.563565000, 2.051312000]
+  - [6.154140000, 0.719972000, 2.331636000]
+  - [4.722283000, 1.115577000, 2.647313000]
+  - [0.680217000, 9.226193000, 4.967632000]
+  - [1.439875000, 9.676063000, 5.358011000]
+  - [-0.011032000, 9.322795000, 5.634492000]
+  - [0.791803000, 4.206646000, 7.060103000]
+  - [0.465658000, 3.580132000, 6.402098000]
+  - [-0.003754000, 4.671166000, 7.348496000]
+  - [0.585038000, 3.735724000, 3.166727000]
+  - [0.000923000, 3.568602000, 3.916887000]
+  - [0.014478000, 3.607080000, 2.398761000]
+  - [0.077789000, 1.652059000, 7.986673000]
+  - [0.007548000, 0.844249000, 8.510475000]
+  - [0.144689000, 2.350277000, 8.649904000]
+  - [3.228492000, 6.621731000, 2.572995000]
+  - [3.008842000, 5.743738000, 2.908765000]
+  - [2.742090000, 7.218290000, 3.155568000]
+  - [0.837043000, 8.552024000, 10.433664000]
+  - [1.487267000, 9.262358000, 10.366639000]
+  - [-0.005690000, 9.018128000, 10.500056000]
+  - [3.071398000, 1.216725000, 4.801195000]
+  - [2.536701000, 1.445513000, 5.571659000]
+  - [3.966738000, 1.148496000, 5.155553000]
+  - [3.719572000, 5.241029000, 8.267599000]
+  - [3.273132000, 6.064009000, 8.032533000]
+  - [3.158096000, 4.557245000, 7.881538000]
+  - [3.063256000, 3.903631000, 5.285351000]
+  - [2.802379000, 3.696269000, 4.379369000]
+  - [2.809001000, 4.828852000, 5.391092000]
+  - [3.639429000, 8.202052000, 5.709602000]
+  - [4.395513000, 8.529489000, 6.212575000]
+  - [2.995734000, 7.967705000, 6.389748000]
+  - [5.224017000, 8.792788000, 3.837058000]
+  - [5.328438000, 9.691962000, 4.172383000]
+  - [5.752075000, 8.786673000, 3.028987000]
+  - [0.002743000, 6.903008000, 2.734952000]
+  - [0.556245000, 6.163658000, 2.454139000]
+  - [0.403327000, 7.666883000, 2.301491000]
+  - [0.396804000, 7.262992000, 7.716919000]
+  - [0.920021000, 6.894504000, 8.439637000]
+  - [-0.002164000, 8.053022000, 8.102322000]
+  - [2.351113000, 9.720914000, 2.999909000]
+  - [1.680507000, 9.849043000, 2.317465000]
+  - [3.171284000, 9.624103000, 2.500102000]
+  - [2.889320000, 2.568607000, 1.682894000]
+  - [2.299087000, 3.264237000, 1.367325000]
+  - [2.383237000, 2.138959000, 2.383710000]
+  - [0.742810000, 5.158729000, 0.011901000]
+  - [0.003407000, 5.779314000, 0.016165000]
+  - [0.315691000, 4.293356000, -0.011720000]
+  - [0.839674000, 1.083099000, 0.678483000]
+  - [0.216649000, 1.818287000, 0.621936000]
+  - [1.498930000, 1.288853000, 0.004016000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  cell: [10.5, 10.5, 10.5, 90.0, 90.0, 90.0]
+
+optimize:
+  method: minima
+  maxit: 5
+  opt_energy: 1.0e-4
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+  optimize_cell: true
+  # Named rather than inherited; see the header.
+  opt_cell_coupling: isotropic
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

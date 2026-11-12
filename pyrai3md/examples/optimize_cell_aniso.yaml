@@ -1,0 +1,146 @@
+# Variable-cell relaxation with all six lattice components free, and the one
+# cell example that says which coupling it means instead of inheriting it.
+#
+# Run: pyrai3md optimize_cell_aniso.yaml
+#
+# `anisotropic` is the default (schema/config.py:193, data/core.py:539,
+# workflow/optimize.py:195) and every other cell case has been running it
+# without naming it; the only example that stated its coupling was the one that
+# asked for the other half, `optimize_cell_pressure.yaml`. Writing the key here
+# is what makes the pair of readings complete rather than implied.
+#
+# What the run has to show, and what it would mean if it did not: the three
+# lattice row lengths change their RATIOS. Under isotropic coupling every
+# component moves along one unit vector built from the row lengths
+# (optimizer/base.py::_cell_direction, :757-780), so the ratios are pinned by
+# construction; under anisotropic coupling that function returns None and the
+# step is never projected onto that direction. A box whose ratios came out
+# identical would therefore not be a slow relaxation - it would be the
+# projection being applied where it must not be.
+# The system is one ethylene inside 25 waters in a 10.5 A cube, 81 atoms, and it
+# is a built structure rather than a hand-written one: Packmol 21.2.1 placed it
+# with a 2.3 A intermolecular exclusion under its periodic constraint, the
+# ethylene pinned at the cell centre. Readings taken off the finished box with
+# this package's own perception (utilities/image_flags.py::bond_graph, minimum
+# image, periodic): 26 connected components, so every molecule is whole; closest
+# intermolecular contact 2.518 A; nothing under a non-bonded floor once bonded
+# and 1-3 pairs are excluded; density 0.654 g/cm3. That edge is what the audit
+# asked for: cropping the same composition out of the equilibrated 525-water box
+# gave 81 atoms but 0.54 g/cm3, because a sphere cut from a periodic box always
+# leaves its corners empty and its cluster presses on its own image.
+#
+# Cost is NOT measured on this environment: xtb is not installed here, so the round
+# gives the first reading.
+control:
+  title: optimize_cell_aniso_example
+  jobtype: optimize
+  theory: [xtb]
+
+atoms: [C, C, H, H, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H]
+coordinates:
+  - [5.250000000, 5.250000000, 4.591334000]
+  - [5.250000000, 5.250000000, 5.908666000]
+  - [5.250000000, 6.164369000, 4.024332000]
+  - [5.250000000, 4.335631000, 4.024332000]
+  - [5.250000000, 6.164369000, 6.475668000]
+  - [5.250000000, 4.335631000, 6.475668000]
+  - [5.576084000, 9.855901000, 8.013593000]
+  - [5.416261000, 9.022565000, 8.473883000]
+  - [5.663960000, 10.499206000, 8.727944000]
+  - [3.519230000, 6.339176000, 10.537341000]
+  - [2.746866000, 6.894032000, 10.371664000]
+  - [4.264994000, 6.932725000, 10.384382000]
+  - [0.241396000, 6.732594000, 5.248050000]
+  - [1.195199000, 6.752267000, 5.100629000]
+  - [0.004097000, 5.810166000, 5.090965000]
+  - [0.653619000, 1.091436000, 3.903576000]
+  - [0.003531000, 1.137445000, 4.615706000]
+  - [0.122559000, 1.179630000, 3.102292000]
+  - [4.741443000, 3.027199000, 0.018296000]
+  - [4.768520000, 2.063743000, 0.071953000]
+  - [5.666155000, 3.288102000, 0.111562000]
+  - [2.785103000, 10.081384000, 7.760958000]
+  - [1.907082000, 9.698112000, 7.879460000]
+  - [3.143185000, 10.115505000, 8.656766000]
+  - [3.512016000, 2.101118000, 8.376901000]
+  - [4.055242000, 1.765790000, 7.652801000]
+  - [2.616738000, 2.090025000, 8.016050000]
+  - [5.243747000, 0.563565000, 2.051312000]
+  - [6.154140000, 0.719972000, 2.331636000]
+  - [4.722283000, 1.115577000, 2.647313000]
+  - [0.680217000, 9.226193000, 4.967632000]
+  - [1.439875000, 9.676063000, 5.358011000]
+  - [-0.011032000, 9.322795000, 5.634492000]
+  - [0.791803000, 4.206646000, 7.060103000]
+  - [0.465658000, 3.580132000, 6.402098000]
+  - [-0.003754000, 4.671166000, 7.348496000]
+  - [0.585038000, 3.735724000, 3.166727000]
+  - [0.000923000, 3.568602000, 3.916887000]
+  - [0.014478000, 3.607080000, 2.398761000]
+  - [0.077789000, 1.652059000, 7.986673000]
+  - [0.007548000, 0.844249000, 8.510475000]
+  - [0.144689000, 2.350277000, 8.649904000]
+  - [3.228492000, 6.621731000, 2.572995000]
+  - [3.008842000, 5.743738000, 2.908765000]
+  - [2.742090000, 7.218290000, 3.155568000]
+  - [0.837043000, 8.552024000, 10.433664000]
+  - [1.487267000, 9.262358000, 10.366639000]
+  - [-0.005690000, 9.018128000, 10.500056000]
+  - [3.071398000, 1.216725000, 4.801195000]
+  - [2.536701000, 1.445513000, 5.571659000]
+  - [3.966738000, 1.148496000, 5.155553000]
+  - [3.719572000, 5.241029000, 8.267599000]
+  - [3.273132000, 6.064009000, 8.032533000]
+  - [3.158096000, 4.557245000, 7.881538000]
+  - [3.063256000, 3.903631000, 5.285351000]
+  - [2.802379000, 3.696269000, 4.379369000]
+  - [2.809001000, 4.828852000, 5.391092000]
+  - [3.639429000, 8.202052000, 5.709602000]
+  - [4.395513000, 8.529489000, 6.212575000]
+  - [2.995734000, 7.967705000, 6.389748000]
+  - [5.224017000, 8.792788000, 3.837058000]
+  - [5.328438000, 9.691962000, 4.172383000]
+  - [5.752075000, 8.786673000, 3.028987000]
+  - [0.002743000, 6.903008000, 2.734952000]
+  - [0.556245000, 6.163658000, 2.454139000]
+  - [0.403327000, 7.666883000, 2.301491000]
+  - [0.396804000, 7.262992000, 7.716919000]
+  - [0.920021000, 6.894504000, 8.439637000]
+  - [-0.002164000, 8.053022000, 8.102322000]
+  - [2.351113000, 9.720914000, 2.999909000]
+  - [1.680507000, 9.849043000, 2.317465000]
+  - [3.171284000, 9.624103000, 2.500102000]
+  - [2.889320000, 2.568607000, 1.682894000]
+  - [2.299087000, 3.264237000, 1.367325000]
+  - [2.383237000, 2.138959000, 2.383710000]
+  - [0.742810000, 5.158729000, 0.011901000]
+  - [0.003407000, 5.779314000, 0.016165000]
+  - [0.315691000, 4.293356000, -0.011720000]
+  - [0.839674000, 1.083099000, 0.678483000]
+  - [0.216649000, 1.818287000, 0.621936000]
+  - [1.498930000, 1.288853000, 0.004016000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  cell: [10.5, 10.5, 10.5, 90.0, 90.0, 90.0]
+
+optimize:
+  method: minima
+  maxit: 5
+  opt_energy: 1.0e-4
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+  optimize_cell: true
+  # Named rather than inherited; see the header.
+  opt_cell_coupling: anisotropic
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

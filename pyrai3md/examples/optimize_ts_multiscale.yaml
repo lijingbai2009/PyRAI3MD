@@ -1,0 +1,53 @@
+# Transition-state search over a single-center composite (two layers)
+# Topology: Dispatcher local / Workflow iterative + batch / Calculator composite (3 tasks)
+# Run: pyrai3md optimize_ts_multiscale.yaml
+#
+# What this example is for. A search that follows curvature needs one geometry's
+# force constants, and a composite run evaluates that geometry as a sum of
+# layered terms - `L(real) + H(model) - L(model)` for ONIOM2 over one center,
+# three tasks per evaluation here (`qm`, `qm2`, `qm2_task1`). The framework's
+# numerical batch differences the *assembled* total gradient, whose terms are
+# scattered onto the whole system's atom indices with their contribution signs,
+# so the curvature the search follows is the composite surface's.
+#
+# What is refused instead of quietly wrong: more than one center. A saddle is
+# one geometry's curvature with exactly one downhill direction, and a center is
+# a region of the system rather than a surface with a saddle of its own. Naming
+# `hess_driver: skill` on a run with more than one backend is refused for the
+# same reason: one geometry has one force-constant matrix and the input does not
+# say which backend produces it.
+#
+# Both layers are PySCF here, which the binding identity now allows: a
+# `theory:` list may hold one program twice, the second binding keyed by its
+# role (`pyscf_skill@qm2`). With the model region covering the whole system the
+# composite reduces to the high-layer surface, and that is the check this file
+# is for - the two-layer run reaches the same saddle as `optimize_ts.yaml` in
+# the same 32 evaluations to the printed digit (-91.5650982833), and the
+# endpoint's own frequency job reports one imaginary mode (-1248.7 cm-1). The
+# cost is three evaluations' worth of engine work per step.
+
+control:
+  title: optimize_ts_multiscale_example
+  jobtype: optimize
+  theory: [pyscf, pyscf]
+  driver: main
+
+optimize:
+  method: ts
+  maxit: 60
+
+atoms: [H, C, N]
+coordinates:
+  - [1.100000000,  0.000000000, 0.610000000]
+  - [0.000000000,  0.000000000, 0.000000000]
+  - [0.000000000,  0.000000000, 1.220000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  highlevel: [[1, 2, 3]]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

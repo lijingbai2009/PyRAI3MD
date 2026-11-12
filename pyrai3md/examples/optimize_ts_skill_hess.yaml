@@ -1,0 +1,53 @@
+# Transition-state search with the backend's own curvature (hess_driver: skill)
+# Topology: Dispatcher local / Workflow iterative + one dispatched property job / Calculator local
+# Run: pyrai3md optimize_ts_skill_hess.yaml
+#
+# The same search as `optimize_ts.yaml`, taking its initial matrix from the
+# other producer: `&hessian hess_driver: skill` asks the backend for the force
+# constants it computes itself. The optimization loop is evaluated for energy
+# and gradient every step, so the request goes out as one dispatched
+# `frequency` job on the geometry the search starts on, and the loop's own
+# configuration is left exactly as planning wrote it.
+#
+# Why the pairing is worth an example of its own: it is the branch that makes a
+# complex system cheaper (an engine with an analytical second derivative needs
+# one job, where the framework's batch costs 2 x 3N gradient jobs). Both
+# producers were run on the same structure and agree to 0.13 cm-1 per mode at
+# the starting geometry, and here they reach the same saddle in the same 32
+# evaluations: -91.5650982833 against -91.5650982834 Hartree, with the
+# endpoint's own frequency job reporting one imaginary mode in both cases
+# (-1248.6 and -1248.4 cm-1).
+#
+# What the branch refuses, and why: naming the backend as the producer of a
+# multi-backend run (one geometry has one force-constant matrix, and the input
+# does not say whose), and an analytical matrix from a skill that has no
+# Hessian profile - the second job then fails by name and points back at
+# `hess_driver: main`.
+
+control:
+  title: optimize_ts_skill_hess_example
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: ts
+  maxit: 60
+
+hessian:
+  hess_driver: skill
+
+atoms: [H, C, N]
+coordinates:
+  - [1.100000000,  0.000000000, 0.610000000]
+  - [0.000000000,  0.000000000, 0.000000000]
+  - [0.000000000,  0.000000000, 1.220000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

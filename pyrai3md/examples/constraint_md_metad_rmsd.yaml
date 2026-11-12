@@ -1,0 +1,56 @@
+# Constraint example, aperiodic: an aligned-RMSD history potential without a cell.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_metad_rmsd.yaml
+#
+# The same action the periodic batch runs, so the two paths of one capability
+# both have a real product behind them. `width: 0.01` in the squared-deviation
+# variable is deliberately narrow.
+#
+# Measured (5 steps, pace 2): the history rows are 0, 0, 0,
+# 2.617433370308e-04, 2.725870659e-07 Ha. The row at a deposition step is
+# below the 5e-4 hill height, i.e. the hill committed at this step is not
+# evaluated at this step - which is the next-step discipline the design
+# document states - and the following drop to 2.7e-7 is the narrow width: the
+# variable moved out of range of every hill deposited so far.
+# Constraint example for the merged constraint subsystem.
+control:
+  title: constraint_md_metad_rmsd_example
+  jobtype: md
+  gl_seed: 20260929   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 5
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  meta_rmsd: [[1, 2, 3]]
+  meta_height: 0.0005
+  meta_width: 0.01
+  meta_pace: 2
+  meta_rmsd_ref: [[0.0, 0.0, 0.11734, 0.0, 0.75754, -0.46936, 0.0, -0.75754, -0.46936]]
+  meta_id: shape

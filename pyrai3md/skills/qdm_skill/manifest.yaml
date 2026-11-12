@@ -1,0 +1,108 @@
+name: qdm
+backend:
+  module: backend
+  class: QDMBackend
+# Machine-learning potential backend: periodic support is not declared
+# until periodic neighborhoods and labels are validated separately.
+supports_pbc: false
+units:
+  energy: hartree
+  gradient: hartree/bohr
+roles:
+  qm: QDMBackend
+  qm2: false
+  mm: false
+capabilities:
+- energy
+- gradient
+- nac
+- md
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). Only a thread axis: this skill starts no MPI
+# ranks, so one calculation is one process.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+
+profiles:
+  tully1_energy:
+    capability: energy
+    method: tully1
+  tully1_gradient:
+    capability: gradient
+    method: tully1
+  tully1_nac:
+    capability: nac
+    method: tully1
+  tully1_reference:
+    capability: md
+    method: tully1
+  tully2_energy:
+    capability: energy
+    method: tully2
+  tully2_gradient:
+    capability: gradient
+    method: tully2
+  tully2_nac:
+    capability: nac
+    method: tully2
+  tully2_reference:
+    capability: md
+    method: tully2
+  tully3_energy:
+    capability: energy
+    method: tully3
+  tully3_gradient:
+    capability: gradient
+    method: tully3
+  tully3_nac:
+    capability: nac
+    method: tully3
+  tully3_reference:
+    capability: md
+    method: tully3
+  lz1_energy:
+    capability: energy
+    method: lz1
+  lz1_gradient:
+    capability: gradient
+    method: lz1
+  lz1_nac:
+    capability: nac
+    method: lz1
+  lz1_reference:
+    capability: md
+    method: lz1
+  lz2_energy:
+    capability: energy
+    method: lz2
+  lz2_gradient:
+    capability: gradient
+    method: lz2
+  lz2_nac:
+    capability: nac
+    method: lz2
+  lz2_reference:
+    capability: md
+    method: lz2
+  lz3_energy:
+    capability: energy
+    method: lz3
+  lz3_gradient:
+    capability: gradient
+    method: lz3
+  lz3_nac:
+    capability: nac
+    method: lz3
+  lz3_reference:
+    capability: md
+    method: lz3

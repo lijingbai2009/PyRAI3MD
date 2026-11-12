@@ -1,0 +1,41 @@
+# Constraint example for the merged constraint subsystem.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_shake.yaml
+control:
+  title: constraint_md_shake_example
+  jobtype: md
+  gl_seed: 20260929   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 5
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  shake_bond: [[1, 2, 1, 3]]
+  shake_tol: 1e-10
+  shake_id: oh_bonds

@@ -1,0 +1,69 @@
+# ONIOM point-charge embedding: the same BAGEL-in-GFN-FF water centre on a saddle search, with the MM atoms held by a fix and the curvature taken from the framework numerical composite Hessian.
+# Topology: Dispatcher local / Workflow iterative / Calculator composite (oniom)
+# Run: pyrai3md multiscale_oniom2_bagel_charge_ts.yaml
+# Engine-gated (xTB/BAGEL): the local ORCA+PySCF true-embedding carriers are
+# `multiscale_oniom2_orca_embedding_{meci,neb}`.
+
+control:
+  title: multiscale_oniom2_bagel_charge_ts_example
+  jobtype: optimize
+  theory:
+  - bagel
+  - xtb
+  multiscale_type: oniom
+atoms:
+- O
+- H
+- H
+- O
+- H
+- H
+coordinates:
+- - 1.0
+  - 1.0
+  - 1.0
+- - 2.0
+  - 1.0
+  - 1.0
+- - 1.0
+  - 2.0
+  - 1.0
+- - 5.0
+  - 5.0
+  - 5.0
+- - 6.0
+  - 5.0
+  - 5.0
+- - 5.0
+  - 6.0
+  - 5.0
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: '1'
+  spin: '0'
+  highlevel:
+  - 1
+  - 2
+  - 3
+  embedding: true
+  read_charge: false
+optimize:
+  method: ts
+  maxit: 2
+hessian:
+  hess_driver: main
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  fix_atoms: 4-6
+  fix_id: hold_mm
+bagel:
+  method: casscf
+  basis: sto-3g
+  nact_elec: 2
+  nact_orb: 2
+  nclosed: 4
+xtb:
+  method: gfn_ff

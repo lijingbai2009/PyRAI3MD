@@ -1,0 +1,264 @@
+Input argparse: {'index': '0', 'filepath': '/path/to/training_set', 'gpus': '-1', 'mode': 'training', 'seed': 20261024}
+Warning: This TensorFlow build reports no GPU, running on CPU
+Logic Devices: []
+Found x-shape of (100, 6, 3)
+Found energy-shape of (100, 2)
+Found gradient-shape of (100, 2, 6, 3)
+Info: Train-Test split at Train: 90 Test 10 Total 100
+Info: Making new initialized weights.
+Info: Total-Data gradient std [100   2   6   3] : [0.0914043  0.11050789]
+Info: Total-Data energy std [100   2] : [0.01255053 0.01507426]
+Info: Using energy-std (1, 2) : [0.01255053 0.01507426]
+Info: Using energy-mean (1, 2) : [-77.45725 -77.15219]
+Info: Using gradient-std (1, 2, 1, 1) : [0.01117114 0.01341749]
+Info: Using gradient-mean (1, 2, 1, 1) : [0. 0.]
+Info: Using x-scale () : 1.1234788894653323
+Info: Using x-offset () : -1.0427223
+Info: Using feature-scale (1, 22) : [[0.02425927 0.06487484 0.01981751 0.06741474 0.02332936 0.03454007
+  0.02390371 0.06773865 0.01339876 0.02730988 0.02163202 0.06977239
+  0.02369507 0.01267471 0.04019479 0.04764485 0.06817828 0.07873419
+  0.08070368 0.12969492 0.06876954 0.14132534]]
+Info: Using feature-offset (1, 22) : [[ 8.4521896e-01  1.0110148e+00  5.2322304e-01  1.0148871e+00
+   5.2846301e-01  6.0343051e-01  5.2867484e-01  1.0130576e+00
+   3.5917825e-01  4.5226681e-01  5.3333151e-01  1.0317992e+00
+   4.4943342e-01  3.6303544e-01  6.0179317e-01  4.4909847e-01
+   1.1101476e+00  1.5832782e+00  1.5576130e+00  1.0501462e-03
+   2.5354093e-03 -1.3875999e-02]]
+
+Start fit.
+Model: "energy_gradient_model"
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Layer (type)                    ┃ Output Shape           ┃       Param # ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ feat_geo (FeatureGeometric)     │ ?                      │            54 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ feat_std                        │ ?                      │            44 │
+│ (ConstLayerNormalization)       │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ mlp (MLP)                       │ ?                      │        22,500 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ energy (Dense)                  │ (1, 2)                 │           202 │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ force (EmptyGradient)           │ ?                      │             0 │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+ Total params: 22,800 (89.27 KB)
+ Trainable params: 22,702 (88.68 KB)
+ Non-trainable params: 98 (608.00 B)
+Epoch 1/100
+18/18 - 1s - 47ms/step - energy_loss: 1.6175 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0141 - energy_r2_metric: -1.6103e+00 - force_loss: 53.3758 - force_lr: 0.0010 - force_mean_absolute_error: 0.0634 - force_r2_metric: 0.1675 - loss: 535.3755 - learning_rate: 0.0010
+Epoch 2/100
+18/18 - 0s - 2ms/step - energy_loss: 4.3005 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0227 - energy_r2_metric: -6.6636e+00 - force_loss: 42.5067 - force_lr: 0.0010 - force_mean_absolute_error: 0.0574 - force_r2_metric: 0.3441 - loss: 429.3676 - learning_rate: 0.0010
+Epoch 3/100
+18/18 - 0s - 2ms/step - energy_loss: 10.6736 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0398 - energy_r2_metric: -1.8014e+01 - force_loss: 37.1518 - force_lr: 0.0010 - force_mean_absolute_error: 0.0533 - force_r2_metric: 0.4293 - loss: 382.1917 - learning_rate: 0.0010
+Epoch 4/100
+18/18 - 0s - 2ms/step - energy_loss: 17.9300 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0535 - energy_r2_metric: -3.0682e+01 - force_loss: 29.8215 - force_lr: 0.0010 - force_mean_absolute_error: 0.0473 - force_r2_metric: 0.5402 - loss: 316.1445 - learning_rate: 0.0010
+Epoch 5/100
+18/18 - 0s - 2ms/step - energy_loss: 16.4343 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0512 - energy_r2_metric: -2.7598e+01 - force_loss: 21.8365 - force_lr: 0.0010 - force_mean_absolute_error: 0.0399 - force_r2_metric: 0.6613 - loss: 234.7996 - learning_rate: 0.0010
+Epoch 6/100
+18/18 - 0s - 2ms/step - energy_loss: 5.4073 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0269 - energy_r2_metric: -8.3289e+00 - force_loss: 15.9469 - force_lr: 0.0010 - force_mean_absolute_error: 0.0344 - force_r2_metric: 0.7486 - loss: 164.8762 - learning_rate: 0.0010
+Epoch 7/100
+18/18 - 0s - 2ms/step - energy_loss: 1.4503 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0126 - energy_r2_metric: -1.3360e+00 - force_loss: 12.3115 - force_lr: 0.0010 - force_mean_absolute_error: 0.0304 - force_r2_metric: 0.8031 - loss: 124.5649 - learning_rate: 0.0010
+Epoch 8/100
+18/18 - 0s - 2ms/step - energy_loss: 0.8053 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0093 - energy_r2_metric: -2.9060e-01 - force_loss: 9.8753 - force_lr: 0.0010 - force_mean_absolute_error: 0.0273 - force_r2_metric: 0.8410 - loss: 99.5583 - learning_rate: 0.0010
+Epoch 9/100
+18/18 - 0s - 2ms/step - energy_loss: 0.5529 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0078 - energy_r2_metric: 0.0846 - force_loss: 8.1110 - force_lr: 0.0010 - force_mean_absolute_error: 0.0247 - force_r2_metric: 0.8680 - loss: 81.6627 - learning_rate: 0.0010
+Epoch 10/100
+18/18 - 0s - 15ms/step - energy_loss: 0.3748 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0066 - energy_r2_metric: 0.3610 - force_loss: 6.9525 - force_lr: 0.0010 - force_mean_absolute_error: 0.0228 - force_r2_metric: 0.8858 - loss: 69.8998 - val_energy_loss: 0.1993 - val_energy_lr: 0.0010 - val_energy_mean_absolute_error: 0.0047 - val_energy_r2_metric: 0.8563 - val_force_loss: 7.8621 - val_force_lr: 0.0010 - val_force_mean_absolute_error: 0.0233 - val_force_r2_metric: 0.9198 - val_loss: 78.8204 - learning_rate: 0.0010
+Epoch 11/100
+18/18 - 0s - 2ms/step - energy_loss: 0.2978 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0059 - energy_r2_metric: 0.4859 - force_loss: 6.1360 - force_lr: 0.0010 - force_mean_absolute_error: 0.0212 - force_r2_metric: 0.8987 - loss: 61.6582 - learning_rate: 0.0010
+Epoch 12/100
+18/18 - 0s - 2ms/step - energy_loss: 0.2400 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0054 - energy_r2_metric: 0.5855 - force_loss: 5.5131 - force_lr: 0.0010 - force_mean_absolute_error: 0.0199 - force_r2_metric: 0.9088 - loss: 55.3710 - learning_rate: 0.0010
+Epoch 13/100
+18/18 - 0s - 2ms/step - energy_loss: 0.1878 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0048 - energy_r2_metric: 0.6759 - force_loss: 5.0402 - force_lr: 0.0010 - force_mean_absolute_error: 0.0188 - force_r2_metric: 0.9164 - loss: 50.5896 - learning_rate: 0.0010
+Epoch 14/100
+18/18 - 0s - 2ms/step - energy_loss: 0.1538 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0043 - energy_r2_metric: 0.7358 - force_loss: 4.7015 - force_lr: 0.0010 - force_mean_absolute_error: 0.0179 - force_r2_metric: 0.9220 - loss: 47.1689 - learning_rate: 0.0010
+Epoch 15/100
+18/18 - 0s - 2ms/step - energy_loss: 0.1298 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0040 - energy_r2_metric: 0.7777 - force_loss: 4.4607 - force_lr: 0.0010 - force_mean_absolute_error: 0.0173 - force_r2_metric: 0.9260 - loss: 44.7364 - learning_rate: 0.0010
+Epoch 16/100
+18/18 - 0s - 2ms/step - energy_loss: 0.1130 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0038 - energy_r2_metric: 0.8070 - force_loss: 4.2767 - force_lr: 0.0010 - force_mean_absolute_error: 0.0168 - force_r2_metric: 0.9290 - loss: 42.8800 - learning_rate: 0.0010
+Epoch 17/100
+18/18 - 0s - 2ms/step - energy_loss: 0.1006 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0036 - energy_r2_metric: 0.8287 - force_loss: 4.1262 - force_lr: 0.0010 - force_mean_absolute_error: 0.0163 - force_r2_metric: 0.9315 - loss: 41.3622 - learning_rate: 0.0010
+Epoch 18/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0911 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0034 - energy_r2_metric: 0.8453 - force_loss: 3.9996 - force_lr: 0.0010 - force_mean_absolute_error: 0.0159 - force_r2_metric: 0.9336 - loss: 40.0870 - learning_rate: 0.0010
+Epoch 19/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0839 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0033 - energy_r2_metric: 0.8577 - force_loss: 3.8927 - force_lr: 0.0010 - force_mean_absolute_error: 0.0156 - force_r2_metric: 0.9354 - loss: 39.0104 - learning_rate: 0.0010
+Epoch 20/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0783 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0032 - energy_r2_metric: 0.8673 - force_loss: 3.8013 - force_lr: 0.0010 - force_mean_absolute_error: 0.0153 - force_r2_metric: 0.9369 - loss: 38.0914 - val_energy_loss: 0.1115 - val_energy_lr: 0.0010 - val_energy_mean_absolute_error: 0.0033 - val_energy_r2_metric: 0.9192 - val_force_loss: 6.1215 - val_force_lr: 0.0010 - val_force_mean_absolute_error: 0.0190 - val_force_r2_metric: 0.9376 - val_loss: 61.3263 - learning_rate: 0.0010
+Epoch 21/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0737 - energy_lr: 0.0010 - energy_mean_absolute_error: 0.0031 - energy_r2_metric: 0.8749 - force_loss: 3.7214 - force_lr: 0.0010 - force_mean_absolute_error: 0.0150 - force_r2_metric: 0.9382 - loss: 37.2881 - learning_rate: 0.0010
+Epoch 22/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0511 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0024 - energy_r2_metric: 0.9255 - force_loss: 3.4693 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0146 - force_r2_metric: 0.9425 - loss: 34.7436 - learning_rate: 1.0000e-04
+Epoch 23/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0515 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0026 - energy_r2_metric: 0.9153 - force_loss: 3.2175 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0137 - force_r2_metric: 0.9466 - loss: 32.2261 - learning_rate: 1.0000e-04
+Epoch 24/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0466 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0024 - energy_r2_metric: 0.9264 - force_loss: 3.1565 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0136 - force_r2_metric: 0.9475 - loss: 31.6117 - learning_rate: 1.0000e-04
+Epoch 25/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0408 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0022 - energy_r2_metric: 0.9389 - force_loss: 3.1413 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0135 - force_r2_metric: 0.9478 - loss: 31.4540 - learning_rate: 1.0000e-04
+Epoch 26/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0400 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0021 - energy_r2_metric: 0.9406 - force_loss: 3.1332 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0135 - force_r2_metric: 0.9480 - loss: 31.3715 - learning_rate: 1.0000e-04
+Epoch 27/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0397 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0021 - energy_r2_metric: 0.9411 - force_loss: 3.1199 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0134 - force_r2_metric: 0.9482 - loss: 31.2384 - learning_rate: 1.0000e-04
+Epoch 28/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0392 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0021 - energy_r2_metric: 0.9422 - force_loss: 3.1105 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0134 - force_r2_metric: 0.9483 - loss: 31.1437 - learning_rate: 1.0000e-04
+Epoch 29/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0388 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0021 - energy_r2_metric: 0.9430 - force_loss: 3.1009 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0134 - force_r2_metric: 0.9485 - loss: 31.0478 - learning_rate: 1.0000e-04
+Epoch 30/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0385 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0021 - energy_r2_metric: 0.9435 - force_loss: 3.0920 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0133 - force_r2_metric: 0.9486 - loss: 30.9581 - val_energy_loss: 0.0631 - val_energy_lr: 1.0000e-04 - val_energy_mean_absolute_error: 0.0025 - val_energy_r2_metric: 0.9551 - val_force_loss: 5.3293 - val_force_lr: 1.0000e-04 - val_force_mean_absolute_error: 0.0170 - val_force_r2_metric: 0.9456 - val_loss: 53.3563 - learning_rate: 1.0000e-04
+Epoch 31/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0381 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0021 - energy_r2_metric: 0.9440 - force_loss: 3.0834 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0133 - force_r2_metric: 0.9488 - loss: 30.8717 - learning_rate: 1.0000e-04
+Epoch 32/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0378 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0021 - energy_r2_metric: 0.9446 - force_loss: 3.0751 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0133 - force_r2_metric: 0.9489 - loss: 30.7887 - learning_rate: 1.0000e-04
+Epoch 33/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0375 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9451 - force_loss: 3.0671 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0132 - force_r2_metric: 0.9490 - loss: 30.7085 - learning_rate: 1.0000e-04
+Epoch 34/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0372 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9456 - force_loss: 3.0593 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0132 - force_r2_metric: 0.9492 - loss: 30.6305 - learning_rate: 1.0000e-04
+Epoch 35/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0370 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9461 - force_loss: 3.0518 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0132 - force_r2_metric: 0.9493 - loss: 30.5546 - learning_rate: 1.0000e-04
+Epoch 36/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0367 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9465 - force_loss: 3.0444 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0132 - force_r2_metric: 0.9494 - loss: 30.4805 - learning_rate: 1.0000e-04
+Epoch 37/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0364 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9470 - force_loss: 3.0372 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0132 - force_r2_metric: 0.9495 - loss: 30.4079 - learning_rate: 1.0000e-04
+Epoch 38/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0361 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9475 - force_loss: 3.0301 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0131 - force_r2_metric: 0.9496 - loss: 30.3367 - learning_rate: 1.0000e-04
+Epoch 39/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0358 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9480 - force_loss: 3.0231 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0131 - force_r2_metric: 0.9498 - loss: 30.2668 - learning_rate: 1.0000e-04
+Epoch 40/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0355 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9484 - force_loss: 3.0162 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0131 - force_r2_metric: 0.9499 - loss: 30.1979 - val_energy_loss: 0.0585 - val_energy_lr: 1.0000e-04 - val_energy_mean_absolute_error: 0.0024 - val_energy_r2_metric: 0.9582 - val_force_loss: 5.3502 - val_force_lr: 1.0000e-04 - val_force_mean_absolute_error: 0.0169 - val_force_r2_metric: 0.9455 - val_loss: 53.5604 - learning_rate: 1.0000e-04
+Epoch 41/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0353 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9489 - force_loss: 3.0095 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0131 - force_r2_metric: 0.9500 - loss: 30.1301 - learning_rate: 1.0000e-04
+Epoch 42/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0350 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9493 - force_loss: 3.0028 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0130 - force_r2_metric: 0.9501 - loss: 30.0632 - learning_rate: 1.0000e-04
+Epoch 43/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0348 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9497 - force_loss: 2.9962 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0130 - force_r2_metric: 0.9502 - loss: 29.9971 - learning_rate: 1.0000e-04
+Epoch 44/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0345 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0020 - energy_r2_metric: 0.9501 - force_loss: 2.9897 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0130 - force_r2_metric: 0.9503 - loss: 29.9318 - learning_rate: 1.0000e-04
+Epoch 45/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0342 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9505 - force_loss: 2.9833 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0130 - force_r2_metric: 0.9504 - loss: 29.8672 - learning_rate: 1.0000e-04
+Epoch 46/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0340 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9510 - force_loss: 2.9769 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0129 - force_r2_metric: 0.9505 - loss: 29.8033 - learning_rate: 1.0000e-04
+Epoch 47/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0338 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9513 - force_loss: 2.9706 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0129 - force_r2_metric: 0.9506 - loss: 29.7400 - learning_rate: 1.0000e-04
+Epoch 48/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0335 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9517 - force_loss: 2.9644 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0129 - force_r2_metric: 0.9507 - loss: 29.6773 - learning_rate: 1.0000e-04
+Epoch 49/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0333 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9521 - force_loss: 2.9582 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0129 - force_r2_metric: 0.9508 - loss: 29.6151 - learning_rate: 1.0000e-04
+Epoch 50/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0330 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9525 - force_loss: 2.9520 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0129 - force_r2_metric: 0.9509 - loss: 29.5534 - val_energy_loss: 0.0540 - val_energy_lr: 1.0000e-04 - val_energy_mean_absolute_error: 0.0023 - val_energy_r2_metric: 0.9613 - val_force_loss: 5.3706 - val_force_lr: 1.0000e-04 - val_force_mean_absolute_error: 0.0167 - val_force_r2_metric: 0.9454 - val_loss: 53.7604 - learning_rate: 1.0000e-04
+Epoch 51/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0328 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9528 - force_loss: 2.9459 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0128 - force_r2_metric: 0.9510 - loss: 29.4923 - learning_rate: 1.0000e-04
+Epoch 52/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0326 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9532 - force_loss: 2.9399 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0128 - force_r2_metric: 0.9511 - loss: 29.4316 - learning_rate: 1.0000e-04
+Epoch 53/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0324 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9535 - force_loss: 2.9339 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0128 - force_r2_metric: 0.9512 - loss: 29.3713 - learning_rate: 1.0000e-04
+Epoch 54/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0322 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9539 - force_loss: 2.9279 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0128 - force_r2_metric: 0.9513 - loss: 29.3115 - learning_rate: 1.0000e-04
+Epoch 55/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0319 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9542 - force_loss: 2.9220 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0128 - force_r2_metric: 0.9514 - loss: 29.2520 - learning_rate: 1.0000e-04
+Epoch 56/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0317 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9545 - force_loss: 2.9161 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0127 - force_r2_metric: 0.9515 - loss: 29.1930 - learning_rate: 1.0000e-04
+Epoch 57/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0315 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9549 - force_loss: 2.9103 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0127 - force_r2_metric: 0.9516 - loss: 29.1343 - learning_rate: 1.0000e-04
+Epoch 58/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0313 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9552 - force_loss: 2.9045 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0127 - force_r2_metric: 0.9517 - loss: 29.0760 - learning_rate: 1.0000e-04
+Epoch 59/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0311 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0019 - energy_r2_metric: 0.9555 - force_loss: 2.8987 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0127 - force_r2_metric: 0.9518 - loss: 29.0180 - learning_rate: 1.0000e-04
+Epoch 60/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0309 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9558 - force_loss: 2.8929 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0126 - force_r2_metric: 0.9519 - loss: 28.9604 - val_energy_loss: 0.0498 - val_energy_lr: 1.0000e-04 - val_energy_mean_absolute_error: 0.0022 - val_energy_r2_metric: 0.9642 - val_force_loss: 5.3824 - val_force_lr: 1.0000e-04 - val_force_mean_absolute_error: 0.0166 - val_force_r2_metric: 0.9454 - val_loss: 53.8743 - learning_rate: 1.0000e-04
+Epoch 61/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0307 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9561 - force_loss: 2.8872 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0126 - force_r2_metric: 0.9520 - loss: 28.9031 - learning_rate: 1.0000e-04
+Epoch 62/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0305 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9564 - force_loss: 2.8816 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0126 - force_r2_metric: 0.9521 - loss: 28.8461 - learning_rate: 1.0000e-04
+Epoch 63/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0304 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9567 - force_loss: 2.8759 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0126 - force_r2_metric: 0.9522 - loss: 28.7894 - learning_rate: 1.0000e-04
+Epoch 64/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0302 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9569 - force_loss: 2.8703 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0126 - force_r2_metric: 0.9523 - loss: 28.7330 - learning_rate: 1.0000e-04
+Epoch 65/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0300 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9572 - force_loss: 2.8647 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0126 - force_r2_metric: 0.9524 - loss: 28.6769 - learning_rate: 1.0000e-04
+Epoch 66/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0298 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9575 - force_loss: 2.8591 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0125 - force_r2_metric: 0.9525 - loss: 28.6211 - learning_rate: 1.0000e-04
+Epoch 67/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0296 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9577 - force_loss: 2.8536 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0125 - force_r2_metric: 0.9526 - loss: 28.5655 - learning_rate: 1.0000e-04
+Epoch 68/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0295 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9580 - force_loss: 2.8481 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0125 - force_r2_metric: 0.9527 - loss: 28.5102 - learning_rate: 1.0000e-04
+Epoch 69/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0293 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9583 - force_loss: 2.8426 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0125 - force_r2_metric: 0.9528 - loss: 28.4551 - learning_rate: 1.0000e-04
+Epoch 70/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0291 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9585 - force_loss: 2.8371 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0125 - force_r2_metric: 0.9528 - loss: 28.4004 - val_energy_loss: 0.0461 - val_energy_lr: 1.0000e-04 - val_energy_mean_absolute_error: 0.0021 - val_energy_r2_metric: 0.9668 - val_force_loss: 5.3866 - val_force_lr: 1.0000e-04 - val_force_mean_absolute_error: 0.0165 - val_force_r2_metric: 0.9454 - val_loss: 53.9124 - learning_rate: 1.0000e-04
+Epoch 71/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-04 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9587 - force_loss: 2.8317 - force_lr: 1.0000e-04 - force_mean_absolute_error: 0.0124 - force_r2_metric: 0.9529 - loss: 28.3458 - learning_rate: 1.0000e-04
+Epoch 72/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0288 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9591 - force_loss: 2.7886 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9537 - loss: 27.9148 - learning_rate: 1.0000e-05
+Epoch 73/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0288 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9590 - force_loss: 2.7853 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8817 - learning_rate: 1.0000e-05
+Epoch 74/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9587 - force_loss: 2.7831 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8601 - learning_rate: 1.0000e-05
+Epoch 75/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9586 - force_loss: 2.7820 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8489 - learning_rate: 1.0000e-05
+Epoch 76/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9585 - force_loss: 2.7813 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8417 - learning_rate: 1.0000e-05
+Epoch 77/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9584 - force_loss: 2.7807 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8355 - learning_rate: 1.0000e-05
+Epoch 78/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9584 - force_loss: 2.7801 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8295 - learning_rate: 1.0000e-05
+Epoch 79/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9584 - force_loss: 2.7795 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8235 - learning_rate: 1.0000e-05
+Epoch 80/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9584 - force_loss: 2.7789 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8177 - val_energy_loss: 0.0465 - val_energy_lr: 1.0000e-05 - val_energy_mean_absolute_error: 0.0021 - val_energy_r2_metric: 0.9664 - val_force_loss: 5.3472 - val_force_lr: 1.0000e-05 - val_force_mean_absolute_error: 0.0164 - val_force_r2_metric: 0.9458 - val_loss: 53.5184 - learning_rate: 1.0000e-05
+Epoch 81/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0289 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9585 - force_loss: 2.7783 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8119 - learning_rate: 1.0000e-05
+Epoch 82/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0288 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9585 - force_loss: 2.7777 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8061 - learning_rate: 1.0000e-05
+Epoch 83/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0288 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9585 - force_loss: 2.7772 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.8004 - learning_rate: 1.0000e-05
+Epoch 84/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0288 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9586 - force_loss: 2.7766 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9538 - loss: 27.7946 - learning_rate: 1.0000e-05
+Epoch 85/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0288 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9586 - force_loss: 2.7760 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7889 - learning_rate: 1.0000e-05
+Epoch 86/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0288 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9586 - force_loss: 2.7754 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7831 - learning_rate: 1.0000e-05
+Epoch 87/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0287 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9587 - force_loss: 2.7749 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7774 - learning_rate: 1.0000e-05
+Epoch 88/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0287 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9587 - force_loss: 2.7743 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7716 - learning_rate: 1.0000e-05
+Epoch 89/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0287 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9588 - force_loss: 2.7737 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7658 - learning_rate: 1.0000e-05
+Epoch 90/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0287 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0018 - energy_r2_metric: 0.9588 - force_loss: 2.7731 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7601 - val_energy_loss: 0.0461 - val_energy_lr: 1.0000e-05 - val_energy_mean_absolute_error: 0.0021 - val_energy_r2_metric: 0.9667 - val_force_loss: 5.3461 - val_force_lr: 1.0000e-05 - val_force_mean_absolute_error: 0.0164 - val_force_r2_metric: 0.9458 - val_loss: 53.5075 - learning_rate: 1.0000e-05
+Epoch 91/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0287 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9588 - force_loss: 2.7726 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7543 - learning_rate: 1.0000e-05
+Epoch 92/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0286 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9589 - force_loss: 2.7720 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7485 - learning_rate: 1.0000e-05
+Epoch 93/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0286 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9589 - force_loss: 2.7714 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7427 - learning_rate: 1.0000e-05
+Epoch 94/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0286 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9589 - force_loss: 2.7708 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7369 - learning_rate: 1.0000e-05
+Epoch 95/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0286 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9590 - force_loss: 2.7702 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9539 - loss: 27.7310 - learning_rate: 1.0000e-05
+Epoch 96/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0286 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9590 - force_loss: 2.7697 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9540 - loss: 27.7252 - learning_rate: 1.0000e-05
+Epoch 97/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0285 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9590 - force_loss: 2.7691 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9540 - loss: 27.7194 - learning_rate: 1.0000e-05
+Epoch 98/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0285 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9591 - force_loss: 2.7685 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9540 - loss: 27.7135 - learning_rate: 1.0000e-05
+Epoch 99/100
+18/18 - 0s - 2ms/step - energy_loss: 0.0285 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9591 - force_loss: 2.7679 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9540 - loss: 27.7077 - learning_rate: 1.0000e-05
+Epoch 100/100
+18/18 - 0s - 3ms/step - energy_loss: 0.0285 - energy_lr: 1.0000e-05 - energy_mean_absolute_error: 0.0017 - energy_r2_metric: 0.9591 - force_loss: 2.7673 - force_lr: 1.0000e-05 - force_mean_absolute_error: 0.0123 - force_r2_metric: 0.9540 - loss: 27.7018 - val_energy_loss: 0.0456 - val_energy_lr: 1.0000e-05 - val_energy_mean_absolute_error: 0.0021 - val_energy_r2_metric: 0.9670 - val_force_loss: 5.3466 - val_force_lr: 1.0000e-05 - val_force_mean_absolute_error: 0.0164 - val_force_r2_metric: 0.9458 - val_loss: 53.5119 - learning_rate: 1.0000e-05
+End fit.
+
+Info: Saving auto-scaler to file...
+
+[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 96ms/step
+[1m1/1[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 102ms/step
+
+[1m1/3[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 145ms/step
+[1m3/3[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 4ms/step  
+
+[1m1/3[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m1s[0m 832ms/step
+[1m3/3[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 496ms/step
+[1m3/3[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m2s[0m 499ms/step
+Info: Max error precomputed and full gradient computation:
+Energy 1.7953695419237192e-08
+Gradient 1.5355095223101856e-07
+error_val: [np.float64(0.002081866166743396), np.float64(0.01638443913945848)]
+error_train: [np.float64(0.0017401545625275283), np.float64(0.012248589831650938)]

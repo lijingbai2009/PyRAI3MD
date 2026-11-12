@@ -1,0 +1,63 @@
+version: 1.0
+name: tddft_st_forces_test
+# The gradient half of a two-surface request: S1, S2 and T1 of one geometry, each
+# with forces, from TWO CP2K runs of one reference.
+#
+# This is the case that decides whether a singlet-triplet crossing search can run
+# on cp2k at all, and it is written as a question to the engine rather than as a
+# claim. What is settled:
+#
+# - one run answers one spin manifold, measured by an A/B that changed only
+#   `RKS_TRIPLETS` (see `tddft_st_energy.yaml` for the numbers), so the surfaces
+#   come from two runs and `service/jobs.py` splits them;
+# - `&PRINT &FORCES LIST` numbers roots inside ONE manifold and takes no spin
+#   argument: the continuing spelling (`LIST 1 3`, first singlet plus first
+#   triplet) aborted mid-print with `State List contains invalid state` /
+#   `TDDFPT Print Forces: Invalid State` at qs_tddfpt2_fprint.F:395-396 (round
+#   tmp_20261014_142736) and wrote neither force file. After the split there is
+#   no cross-manifold list to write: this input asks the singlet run for
+#   `LIST 1 2` and the triplet run for `LIST 1`.
+#
+# What it asks: does the triplet run really produce its excited-state force
+# blocks (`<project>_T-td_forces-1_0.tdfrc` and its `<project>_T-force-1_0.xyz`),
+# and do the blocks the two runs print attribute onto the rows their tables claim?
+# A refusal here is the engine saying it cannot give forces for a triplet root in
+# this build, which is the answer the `mecp` route needs before it is planned, not
+# a parse defect - the parse reports which row nobody answered instead of packing a
+# zero row that reads as a flat surface.
+#
+# Same molecule, basis and box as the energy case so the two runs' SCF baselines
+# and the A/B energies are comparable. No cell relaxation: CP2K prints no stress
+# for a TDDFT run (measured twice, response_solver.F:943).
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  lattice_vector:
+    - [10.0, 0.0, 0.0]
+    - [0.0, 10.0, 0.0]
+    - [0.0, 0.0, 10.0]
+  pbc: [1, 1, 1]
+  charges: 0
+  multiplicity: 1
+  nstate: 4
+  state_spin: [0, 0, 0, 2]
+  target_states: [0, 1, 2, 3]
+  current_state: 1
+  profile: tddft_gradient
+  method: tddft
+  functional: pbe0
+  cutoff: 400
+  ref_cutoff: 50
+  execution_mode: local
+
+expected:
+  energy:
+    shape: [4]
+  gradient:
+    shape: [4, 6, 3]

@@ -1,0 +1,61 @@
+# Nudged elastic band with a held dihedral
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb_torsion.yaml
+#
+# The third strict condition on a band: a dihedral. Hydrogen peroxide's
+# H-O-O-H torsion is -135 deg in both endpoint files, so the band shortens one
+# O-H while the torsion stays where the run bound it. A dihedral needs four
+# atoms, which is why this case is not the three-atom water of
+# `path_neb_angle`; the machinery is the same one (the position solve and the
+# tangential split, landed on every interior image before and after each
+# round).
+#
+# Why the dihedral is -135 and not 0 or 180: the solve's Jacobian divides by
+# the sine of the dihedral, and both those values put a condition there on a
+# singular point. The angle examples make the same choice.
+#
+# Functional test: `maxit` is the budget, not a convergence claim; what it
+# asserts is that every committed image holds the torsion (the runner's
+# post-check, and `tools/verify.py` section F, read it off `path_geom.xyz`).
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_neb_torsion
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_hooh_reactant.xyz
+  neb_product: path_hooh_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [O, O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.475000000]
+  - [1.050000000, 0.000000000, -0.300000000]
+  - [-0.665000000, 0.665000000, 1.775000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_angle: degree
+  shake_dihedral: [[3, 1, 2, 4]]
+  shake_tol: [1e-10]
+  shake_id: [hooh]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

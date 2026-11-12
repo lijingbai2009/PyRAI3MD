@@ -1,0 +1,38 @@
+# Multi-center ONIOM2 control: the same two ORCA/PySCF water centers with
+# embedding off.
+# Topology: Dispatcher local / Workflow single / Calculator composite (5 tasks)
+# Run: pyrai3md multicenter_oniom2_orca_no_embedding_sp.yaml
+
+control:
+  title: multicenter_oniom2_orca_no_embedding_sp_example
+  jobtype: energy gradient
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.0, 1.0, 1.0]
+  - [2.0, 1.0, 1.0]
+  - [1.0, 2.0, 1.0]
+  - [5.0, 5.0, 5.0]
+  - [6.0, 5.0, 5.0]
+  - [5.0, 6.0, 5.0]
+
+molecule:
+  charges: "0; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "1; 1"
+  spin: "0; 0"
+  highlevel: [[1, 2, 3], [4, 5, 6]]
+  embedding: false
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

@@ -1,0 +1,48 @@
+# The same minimum energy path under the ReLU-gated constraint potential
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_mep_relu.yaml
+#
+# path_mep.yaml with `path_constraint: relu` instead of `sphere`, which is the
+# two arms of one comparison: the same start, the same radius, the same
+# thresholds, two constraint algorithms.
+#
+# The ReLU model does not hold the point exactly on the sphere. It minimises
+# `E + phi`, where `phi` is a one-sided quadratic in `(rho - path_radius)` that is
+# zero inside the sphere and grows outside it, so the accepted point sits a few
+# parts in ten thousand of the radius *outside* it: measured on the analytic
+# instrument of `qualification/verification/test_path.py`, 1.004 of the radius
+# against the `sphere` arm's exactly 1.000. It reaches the same minimum and costs
+# more evaluations per point, which the two runs' `path_status.txt` step columns
+# show.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_mep_relu
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 8
+  path_radius: 0.15
+  path_inner_maxit: 20
+  path_constraint: relu
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.174177304, 0.000000000, -0.007583040]
+  - [0.045975463, 0.000000000, 0.002049630]
+  - [-0.044762048, 0.000000000, 1.262686200]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

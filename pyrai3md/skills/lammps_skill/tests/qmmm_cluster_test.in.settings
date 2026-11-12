@@ -1,0 +1,5 @@
+pair_coeff 1 1 0.102 3.188
+pair_coeff 2 2 0.00 0.4000
+pair_coeff 1 2 0.00 1.7753
+bond_coeff 1 450.0 0.9572
+angle_coeff 1 55.0 104.52

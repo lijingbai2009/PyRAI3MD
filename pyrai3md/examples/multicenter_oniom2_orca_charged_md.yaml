@@ -1,0 +1,56 @@
+# Charged multi-center ONIOM2 under MD: the ammonium (+1) and neutral water
+# centers, three NVE steps.
+# Topology: Dispatcher local / Workflow single / Calculator composite (5 tasks)
+# Run: pyrai3md multicenter_oniom2_orca_charged_md.yaml
+#
+# A computed embedded ONIOM run: the Etot criterion is not judged
+# (`runner._embedding_breaks_conservation`), because the outer quantum
+# charges are rebuilt every step.
+
+control:
+  title: multicenter_oniom2_orca_charged_md_example
+  jobtype: md
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+  gl_seed: 20261105
+
+atoms: [N, H, H, H, H, O, H, H]
+coordinates:
+  - [0.0, 0.0, 0.0]
+  - [0.6, 0.6, 0.6]
+  - [0.6, -0.6, -0.6]
+  - [-0.6, 0.6, -0.6]
+  - [-0.6, -0.6, 0.6]
+  - [5.0, 5.0, 5.0]
+  - [5.7572, 5.0, 5.5873]
+  - [5.0, 5.7572, 5.5865]
+
+molecule:
+  charges: "1; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "1; 1"
+  spin: "0; 0"
+  highlevel: [[1, 2, 3, 4, 5], [6, 7, 8]]
+  embedding: true
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 3
+  size: 20.67
+  direct: 1
+  buffer: 1
+  randvelo: 1
+  temperature: 100
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

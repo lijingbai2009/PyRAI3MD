@@ -1,0 +1,75 @@
+# Neural network potential prediction: the error of a trained surface on a
+# test file.
+# Topology: Dispatcher local / Workflow single (node `prediction`) / Calculator local
+# Run: pyrai3md nn_predict.yaml
+# Fixture: egs_small.json (the label file, read here as the test set) and
+# the model folder ./nn_eg written by nn_train.yaml.
+#
+# What this example is for: the second half of the ML pair. `pred_data`
+# turns a serving request into an evaluation -- the trained ensemble is
+# loaded once, every frame of the file is served, and each served channel
+# is compared against the reference values in the same file. The error
+# arithmetic is the skill's (the scaler, the label units and the member
+# spread all live with the model folder); the framework receives the
+# record, prints it, and states whether it arrived.
+#
+# Which numbers to expect: a mean absolute error of order 1 eV, because the
+# folder this reads was trained for ten epochs. The report is printed in eV
+# and eV/Angstrom and is derived from the raw comparison files named in it,
+# so a reader can re-reduce the columns instead of trusting the table. The
+# ensemble spread is reported beside the errors and is not one of them: it
+# is how far the two members disagree.
+#
+# Cost: ~5 s (serving only, ~1.4 ms per frame for 24 frames).
+
+control:
+  title: nn_predict
+  jobtype: prediction
+  theory: [nn]
+
+nn:
+  method: mlp_eg
+  execution_mode: local
+  scratch_path: ./scratch
+  nn_project: NN_EG
+  modeldir: ./nn_eg
+  mult_nn: 2
+  target_states: [0, 1]
+  # The request. A serving call that carries a test file evaluates that
+  # file; without it the same call answers the one geometry above.
+  pred_data: ./egs_small.json
+  eg:
+    batch_size_predict: 64
+
+prediction:
+  multipool: 1
+
+atoms: [C, C, C, C, C, C, H, H, H, H, H, H, C, H, C, C, O, H]
+coordinates:
+  - [-2.9083132, 7.8411096, -0.0702194]
+  - [-1.6931105, 8.4133693, 0.6512565]
+  - [-3.8459958, 8.3900949, 1.1666596]
+  - [-1.0216257, 7.4429598, 1.6028474]
+  - [-2.4619556, 8.9089639, 1.8499307]
+  - [-1.6874987, 7.8364748, 2.6894182]
+  - [-2.2625545, 9.9333107, 2.3056992]
+  - [-2.9383251, 7.9309740, -1.1471826]
+  - [-1.1933051, 9.1360830, 0.0428741]
+  - [-4.7047318, 9.0921007, 1.0200999]
+  - [-0.3820126, 6.5675405, 1.6453516]
+  - [-1.5874013, 7.4083646, 3.5851790]
+  - [-3.3532789, 6.4541791, 0.3104579]
+  - [-3.2106000, 5.3449863, -0.0853950]
+  - [-4.1464620, 6.9244487, 1.3870082]
+  - [-4.8658762, 6.2234127, 2.4157030]
+  - [-5.1800004, 6.8168049, 3.4481760]
+  - [-4.8186387, 5.0921524, 2.2211712]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  # Two singlet roots. The state count is derived from `ci` (the nn skill
+  # fits one output channel per electronic state), and the coupling pairs
+  # the framework derives for a two-state system are validated against it.
+  ci: [2]
+  spin: [0]

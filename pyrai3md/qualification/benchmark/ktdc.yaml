@@ -1,0 +1,125 @@
+# =====================================================================
+# Unified kTDC benchmark case definition (flat benchmark layout:
+# served by the benchmark/ktdc.py task module). One single case file
+# serves every Tully model (tully1/2/3): the production.method key
+# selects the model, so calibrating another Tully model only changes
+# the method (and the model-specific wavepacket parameters) of the
+# pmd_env benchmark entries -- no new YAML file per model. A
+# dedicated ktdc_<method>.yaml shipped next to this file would take
+# precedence for one specific method (model-specific case channel).
+#
+# This case mirrors the unified fssh.yaml entry for entry: the
+# production md input is the identical fewest-switches surface
+# hopping setup, with the single difference isolated by the
+# calibration -- nactype ktdc replaces nactype nac, so the hopping
+# coupling comes from the energy-only kTDC curvature formula
+# instead of the exact qdm transition gradients.
+#
+# Production: pyrai3md md workflow with sfhp=fssh, nactype=ktdc on
+#   the selected qdm analytic model, ninitcond = 100 trajectories
+#   from the fixed initial x and v (executed by the planner's
+#   generated script, 300 steps by default).
+# Reference:  exact split-operator quantum propagation from the SAME
+#   initial x and v, generated independently at benchmark time
+#   through the pyrai3md input system (pyrai3md_skill executes the
+#   skill's public {method}_reference profile; no external dataset);
+#   the momentum seed is k0 = mass * v, so both sides start from
+#   identical initial conditions by construction.
+# Metrics:    the unified final-state metric set: the final
+#   trajectory / state / reference populations are reported and the
+#   final state population is judged against the wavepacket
+#   reference final probability (state_reference_difference). The
+#   tully models carry no internal or analytic hopping probability,
+#   so the remaining comparison targets are skipped.
+#
+# Physical setup: a Gaussian wavepacket of width sigma centered at
+# x0 with momentum k0 = mass * v on adiabatic state initial_state,
+# propagated for nstep steps of dt atomic units. The reference uses
+# substeps inner steps per md step so its saved snapshots land
+# exactly on the md time grid (j * dt).
+#
+# The defaults below calibrate tully1 (method: tully1). tully2
+# (double avoided crossing) and tully3 (extended coupling with
+# reflection) run on the identical defaults; tune their wavepacket
+# parameters through the per-method pmd_env overrides. Keep every
+# override inside the fixed reference grid window [-30, +80] Bohr
+# (qdm_skill REF_XMIN/XMAX_DEFAULT): k0 = model_mass * v0 and the
+# total propagation time T = nstep * dt must leave the packet clear
+# of the periodic FFT boundaries.
+#
+# Sep 2 2026
+# By Jingbai Li
+# Hoffmann Institute of Advanced Materials, Shenzhen Polytechnic Univ.
+# =====================================================================
+
+case: ktdc
+description: >-
+  Unified kTDC (energy-only curvature coupling) calibration case:
+  the FSSH production run with nactype ktdc, the Tully model
+  (tully1/2/3) selected through the production.method key (injected
+  by the pmd_env benchmark entries), run from the fixed initial
+  coordinate and velocity and calibrated against the exact
+  split-operator quantum reference starting from the same initial
+  conditions.
+
+production:
+  method: tully1         # default Tully model; the pmd_env
+                         # benchmark.ktdc entries override it per
+                         # calibration case (tully1/2/3)
+  ninitcond: 100         # standard benchmark: 100-trajectory ensemble
+                         # (binomial noise of the final S1 fraction:
+                         # sigma ~ 0.043 at 100 trajectories)
+  ncpus: 4               # multitask pool size for the trajectories
+                         # (mapped to the md-section multipool keyword)
+  deco: '0.1'            # decoherence correction (continuous
+                         # decay): collapses the residual coherence
+                         # of the trajectories that never hop so
+                         # every trajectory ends in a pure 0/1
+                         # state and the ensemble average is the
+                         # Bernoulli hop statistic; pmd_env
+                         # benchmark entries take priority over
+                         # this template pin
+  nstep: 300             # md steps per trajectory (T = 6000 au so the
+                         # k0 = 10 packet fully clears the crossing)
+  dt: 20                 # md time step (au, ~0.5 fs)
+  sfhp: fssh
+  rk4: '1'               # electronic density propagation by RK4:
+                         # the rk4='0' forward Euler is unconditionally
+                         # unstable on the coherence rotation (per-
+                         # substep amplification sqrt(1+(gap*delt)^2)),
+                         # invisible on the narrow-gap tully1 but
+                         # divergent on tully2 (gap ~0.2 Hartree,
+                         # delt = dt/substep = 1 au -> 1.48x per md
+                         # step); RK4 covers gaps up to ~2.8 Hartree
+  nactype: ktdc          # md-schema keyword: the kTDC energy-only
+                         # curvature coupling replaces the exact qdm
+                         # transition gradients (the single
+                         # difference against the fssh case)
+  # Wavepacket / model setup (atomic units, shared with the reference)
+  x0: -20                # initial coordinate (Bohr)
+  v0: 0.005              # initial velocity (Bohr/au); k0 = mass * v0
+  sigma: 0.5             # packet width (Bohr)
+  model_mass: 2000.0     # model mass (au)
+  initial_state: 0       # initially populated adiabatic state
+                         # (production md root and reference packet
+                         # share this convention)
+
+reference:
+  ngrid: 2048            # split-operator grid points (the fixed
+                         # default window [-30, +80] Bohr needs a
+                         # fine spacing: dx ~ 0.054 Bohr)
+  substeps: 10           # inner reference steps per md step
+                         # (ref_dt = dt / substeps; snapshots saved
+                         # every substeps, i.e. on the md time grid)
+
+metrics:
+  # Unified final-state metric set: the judged difference compares
+  # the ensemble-averaged final S1 population against the exact
+  # wavepacket reference final probability. The tully models carry
+  # no internal or analytic hopping probability, so the reference
+  # difference is the single judged quantity; the final trajectory /
+  # state / reference populations are reported without a tolerance.
+  state_reference_difference:
+    tolerance: 0.1669    # calibrated 2026-09-03 from the tully1/2/3
+                         # benchmark runs: 110% of the largest
+                         # observed deviation (0.1517, tully3)

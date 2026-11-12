@@ -1,0 +1,130 @@
+# =====================================================================
+# Unified LZSH benchmark case definition (flat benchmark layout:
+# served by the benchmark/lzsh.py task module). One single case file
+# serves every Tully model (tully1/2/3): the production.method key
+# selects the model, so calibrating another Tully model only changes
+# the method (and the model-specific wavepacket parameters) of the
+# pmd_env benchmark entries -- no new YAML file per model. A
+# dedicated lzsh_<method>.yaml shipped next to this file takes
+# precedence for one specific method (model-specific case channel).
+#
+# Production: pyrai3md md workflow with sfhp=lzsh (the Landau-Zener
+#   surface hopping integrator) on the selected qdm analytic model,
+#   ninitcond = 100 trajectories from the fixed initial x and v
+#   (executed by the planner's generated script, 300 steps by
+#   default). The LZSH kernels consume the state energies and the
+#   timestep only: no gradients (the gap-curvature internal-
+#   conversion kernel reads the three-step gap series, the gap-slope
+#   intersystem-crossing kernel the signed gap difference), so the
+#   activestate gradient scope is irrelevant for this algorithm.
+# Reference:  exact split-operator quantum propagation from the SAME
+#   initial x and v, generated independently at benchmark time
+#   through the fssh calibration module's reference builder (the
+#   reference depends on the model and the wavepacket setup only,
+#   never on the hopping algorithm under calibration).
+# Metrics:    the unified final-state metric set: the final
+#   trajectory / state / reference populations are reported and the
+#   final state population is judged against the wavepacket
+#   reference final probability (state_reference_difference). The
+#   tully models carry no internal or analytic hopping probability,
+#   so the remaining comparison targets are skipped. LZSH rebuilds
+#   the density as the pure state of the final active state every
+#   step (no coherent propagation), so the final trajectory
+#   population equals the final state population by construction.
+#
+# LZSH carries no fssh-only keywords: no deco (no coherence to
+# decay), no rk4/substep/integrate (no electronic substep
+# propagation) and no nactype (the coupling comes from the gap
+# curvature and the SOC values, not the NAC vectors). The fssh-only
+# keywords fail the production input guard when set.
+#
+# Physical setup: a Gaussian wavepacket of width sigma centered at
+# x0 with momentum k0 = mass * v on adiabatic state initial_state,
+# propagated for nstep steps of dt atomic units. The reference uses
+# substeps inner steps per md step so its saved snapshots land
+# exactly on the md time grid (j * dt).
+#
+# The defaults below calibrate tully1 (method: tully1) with the
+# same wavepacket parameters as the fssh and gsh cases, so all
+# algorithms face identical initial conditions. tully2 (double
+# avoided crossing) and tully3 (extended coupling with reflection)
+# run on the identical defaults; tune their wavepacket parameters
+# through the per-method pmd_env overrides. Keep every override
+# inside the fixed reference grid window [-30, +80] Bohr (qdm_skill
+# REF_XMIN/XMAX_DEFAULT): k0 = model_mass * v0 and the total
+# propagation time T = nstep * dt must leave the packet clear of
+# the periodic FFT boundaries.
+#
+# Sep 2 2026
+# By Jingbai Li
+# Hoffmann Institute of Advanced Materials, Shenzhen Polytechnic Univ.
+# =====================================================================
+
+case: lzsh
+description: >-
+  Unified Landau-Zener surface hopping calibration case: the Tully
+  model (tully1/2/3) is selected through the production.method key
+  (injected by the pmd_env benchmark entries), run from the fixed
+  initial coordinate and velocity and calibrated against the exact
+  split-operator quantum reference starting from the same initial
+  conditions.
+
+production:
+  method: tully1         # default Tully model; the pmd_env
+                         # benchmark.lzsh entries override it per
+                         # calibration case (tully1/2/3)
+  ninitcond: 100         # standard benchmark: 100-trajectory ensemble
+                         # (binomial noise of the final S1 fraction:
+                         # sigma ~ 0.043 at 100 trajectories)
+  ncpus: 4               # multitask pool size for the trajectories
+                         # (mapped to the md-section multipool keyword)
+  nstep: 300             # md steps per trajectory (T = 6000 au so the
+                         # k0 = 10 packet fully clears the crossing)
+  dt: 20                 # md time step (au, ~0.5 fs)
+  sfhp: lzsh
+  adjust: 1              # velocity adjustment policy keyword (the
+                         # LZSH kernels carry no coupling vector, so
+                         # every hop takes the shared isotropic
+                         # rescaling policy; pinned explicitly for
+                         # transparency)
+  reflect: 1             # full-velocity reflection at frustrated
+                         # hops; pinned explicitly although it
+                         # matches the schema default
+  # gap / gapsoc / maxh stay on the md-schema defaults (0.5 eV IC
+  # threshold, 0.5 eV ISC threshold, maxh 10); tune them through
+  # the pmd_env overrides when a model needs a different window.
+  # Wavepacket / model setup (atomic units, shared with the reference)
+  x0: -20                # initial coordinate (Bohr)
+  v0: 0.005              # initial velocity (Bohr/au); k0 = mass * v0
+  sigma: 0.5             # packet width (Bohr)
+  model_mass: 2000.0     # model mass (au)
+  initial_state: 0       # initially populated adiabatic state
+                         # (production md root and reference packet
+                         # share this convention)
+
+reference:
+  ngrid: 2048            # split-operator grid points (the fixed
+                         # default window [-30, +80] Bohr needs a
+                         # fine spacing: dx ~ 0.054 Bohr)
+  substeps: 10           # inner reference steps per md step
+                         # (ref_dt = dt / substeps; snapshots saved
+                         # every substeps, i.e. on the md time grid)
+
+metrics:
+  # Unified final-state metric set: the judged differences compare
+  # the ensemble-averaged final S1 population against the exact
+  # wavepacket reference final probability and the deterministic
+  # LZSH kernel replay of the recorded trajectories (the maximum
+  # per-step probability of the replay window). The tully models
+  # carry no analytic hopping probability, so the analytical
+  # difference is skipped; the final trajectory / state / reference
+  # populations and the internal hopping probability are reported
+  # without a tolerance.
+  state_reference_difference:
+    tolerance: 0.2382    # calibrated 2026-09-03 from the tully1/2/3
+                         # benchmark runs: 110% of the largest
+                         # observed deviation (0.2165, tully3)
+  state_internal_difference:
+    tolerance: 0.0116    # calibrated 2026-09-03: 110% of the largest
+                         # observed deviation (0.01057, tully1;
+                         # tully2/3 observed 0.0)

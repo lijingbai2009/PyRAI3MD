@@ -1,0 +1,42 @@
+version: 1.0
+name: mrsf_nonadiabatic_dynamics_test
+
+# Framework-driven NAMD step provider (runtype=data): nac_type ktdc
+# routes the nonadiabatic_dynamics profile to per-step energies and
+# gradients only (the framework kTDC integrator estimates the
+# coupling from the energy curvature), with no [nac] section and no
+# [guess]file2 orbital continuation. The dcm sibling path (runtype=
+# prop, nacme via MO overlap) is covered by
+# tddft_nonadiabatic_dynamics.yaml.
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  profile: mrsf_nonadiabatic_dynamics
+  method: mrsf
+  basis: sto-3g
+  functional: bhhlyp
+  nac_type: ktdc
+  target_states: [0, 1, 2]
+  keep_tmp: 1
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [3]
+    tolerance: 1e-6
+  gradient:
+    value: null
+    shape: [3, 6, 3]
+    tolerance: 1e-6

@@ -1,0 +1,19 @@
+title: PyRAI3MD
+description: User manual for PyRAI3MD 3.0.0
+remote_theme: just-the-docs/just-the-docs
+search_enabled: true
+color_scheme: light
+nav_sort: case_insensitive
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  auto_ids: true
+  hard_wrap: false
+
+plugins:
+  - jekyll-remote-theme
+
+exclude:
+  - "~$RAI3MD_manual.docx"
+  - README.md

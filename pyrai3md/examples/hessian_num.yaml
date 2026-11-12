@@ -1,0 +1,50 @@
+# Numerical Hessian and vibrational frequencies of one water molecule
+# Topology: Dispatcher local / Workflow hessian / Calculator local (main driver)
+# Run: pyrai3md hessian_num.yaml
+#
+# What this example is for. `jobtype: num_freq` takes the framework's own
+# numerical route: the Hessian is assembled from gradient differences of
+# displaced single points (3N displacements per axis, this run's 9 atoms
+# costing 19 gradient jobs), then symmetrized, mass-weighted, stripped of the
+# rigid motions by rank (a linear molecule drops to five, not six), and
+# diagonalized into frequencies, normal modes, a molden record and the
+# thermodynamic corrections. `jobtype: freq` would rather ask the engine for an
+# analytic Hessian and fall back to this route only if it cannot deliver one,
+# so the numerical path needs its own token to be certified at all
+# (dev/methods/NUM_HESS_DEVELOPMENT.md).
+#
+# Why water. HF/sto-3g on three atoms keeps the whole batch inside a
+# qualification budget (~19 gradient jobs) while still exercising the parts that
+# are easy to get silently wrong: the Angstrom step against gradients that come
+# back in Hartree/Bohr (the missing ANGSTROM_TO_BOHR scales the whole matrix by
+# 1.89), the mobile-block-only assembly that must not smear mobile-frozen
+# coupling into frozen rows, the rank-based rigid-mode removal, and the
+# per-particle (not per-mole) unit chain in the thermo block.
+#
+# hess_mode is deliberately unwritten: its default has to stay None, because a
+# section that always arrives with every key present would otherwise let an
+# 'auto' default override the `num_freq` jobtype forever.
+
+control:
+  title: hessian_num_example
+  jobtype: num_freq
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117300000]
+  - [0.000000000, 0.757200000, -0.469200000]
+  - [0.000000000, -0.757200000, -0.469200000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+hessian:
+  hess_temperature: 298.15
+  hess_pressure: 1.0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

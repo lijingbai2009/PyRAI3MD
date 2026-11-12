@@ -1,0 +1,111 @@
+# A crossing search over a single-center composite, with the box held by the
+# outer layer: the acceptance vehicle for the branch #373 added.
+#
+# Run: pyrai3md optimize_cell_meci_multiscale.yaml
+# Engine: xtb GFN-FF carries the whole periodic system, PySCF TDA/sto-3g is the
+# centre. `theory` lists the centre first and the whole-system layer last - the
+# validation message names the outermost layer as the one that must carry the
+# box, and the order of this list is what decides which is which. Three tasks per
+# evaluation - the real system at the low level, the centre at the high level,
+# the centre again at the low level - which is the ONIOM2 assembly
+# `optimize_ts_multiscale.yaml` uses, here with two electronic surfaces.
+#
+# The centre is one whole water molecule, and that is a measured choice rather
+# than a convenience. The first draft of this case cut the C-C pair out of the
+# ethylene box, which leaves an open-shell, symmetry-degenerate fragment: on the
+# cluster (round `tmp_20261017_180206`) it reported `Gap (S3-S2): 0.00000000` and
+# then died at its second evaluation with `Not enough eigenvalues`, because TDA
+# on a linear C-2 pair has no non-degenerate low-lying root pair to hand back.
+# This centre does: PBE0/sto-3g on the isolated three-atom water (7 AOs, 10
+# electrons) solves its first two singlet TDA roots 4.2118 eV apart, at 8.0034
+# and 12.2152 eV, so the pair the search drives exists and is distinguishable.
+#
+# Who answers what. This is the shape the 2026-10-17 ruling settled:
+#
+#   - the two potential-energy surfaces are the centre's business. The state
+#     count is declared once, in `molecule.ci`, and propagated to every task by
+#     `Calculator.sync()` (`SYNC_SYSTEM_FIELDS`); only the high layer turns it
+#     into excited roots (`method: tda`), while `state_i` and `state_j` under
+#     `optimize` name the pair the search drives. `gap = E_j - E_i` is therefore
+#     read off the centre alone;
+#   - the box is the outer layer's business. The centre is a region, and the
+#     plan gives it no cell at all (its task comes back with `pbc: [0, 0, 0]` and
+#     no stress capability), while the real whole-system task is the one that
+#     carries `cell` and answers with a stress. So the lattice half of the step
+#     is the whole-system stress, and the crossing objective contributes no
+#     lattice derivative of its own here - not because a producer is missing,
+#     but because no layer of this plan can be asked which surface moved when
+#     the box strained.
+#
+# That distinction is the reading this case exists to give. `Cell Gap Term`
+# prints an exact 0.0 and `Cell Gap Term Source` prints
+# `none: box carried by the outer layer` - both already seen on the cluster with
+# the earlier centre - while a missing tensor would instead be refused by name (a
+# single-method run) or reported as `not measured this step`. A NaN standing for
+# either of those is what #373 removed.
+#
+# What it has to show besides that: the cell columns of `opt_status.txt` are
+# present and the volume moves, so the outer layer's stress really entered the
+# generalized vector rather than being parsed and dropped.
+#
+# No `scratch_path` is written here on purpose. A per-skill one is hoisted to the
+# flat config's top level, and the classic-input carrier then reads it as
+# `environment.scratch_path`, which moves every other skill's calculation
+# directory under it - the path that produced the launch defect #375 fixed.
+control:
+  title: optimize_cell_meci_multiscale_example
+  jobtype: optimize
+  theory: [pyscf, xtb]
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [5.0075273836, 5.0483990545, 5.4019883308]
+  - [4.9888848991, 4.4749802829, 6.4229171952]
+  - [5.9296216700, 4.9514364340, 5.1146377945]
+  - [5.0059112876, 5.0037072452, 7.5196417046]
+  - [5.0746722423, 5.5769306941, 6.4489533777]
+  - [4.0335222794, 5.0996201596, 7.8065780046]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  cell: [10.0, 10.0, 10.0, 90.0, 90.0, 90.0]
+  # The centre is the first water, whole: three atoms, closed shell.
+  highlevel: [[1, 2, 3]]
+  # The manifold this run solves, declared in the system section and not under
+  # `optimize` - the same division `optimize_cell_cp2k.yaml` records: the state
+  # count is what `Calculator.sync()` propagates to every task config, so it is
+  # what the high layer derives its excited roots from, while `state_i` and
+  # `state_j` only name the pair the search drives. Three states because the
+  # pair is S1 and S2, and a count below the larger index leaves the optimizer
+  # selecting a state that is never solved.
+  ci: "3"
+  spin: "0"
+
+optimize:
+  method: mecp
+  state_i: 1
+  state_j: 2
+  maxit: 3
+  opt_energy: 1.0e-4
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+  optimize_cell: true
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local
+
+pyscf:
+  method: tda
+  basis: sto3g

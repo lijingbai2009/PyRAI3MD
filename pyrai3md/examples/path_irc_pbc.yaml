@@ -1,0 +1,71 @@
+# Intrinsic reaction coordinate in a periodic cell
+# Topology: Dispatcher local / Workflow iterative / Calculator local
+# Run: pyrai3md path_irc_pbc.yaml
+#
+# The periodic arm of the IRC: the same saddle and the same mode as
+# `path_irc_mode`, walked on a periodic force field. What it adds is that the
+# whole walk - the seed, every probe, the gradient the criteria are judged on,
+# and the frames of `path_geom.xyz` - runs with the cell in the state and
+# `Lattice="..."` on every frame, so a walk that quietly dropped the box would
+# be visible in the record rather than inferred.
+#
+# Where the mode comes from: `irc_mode: molden`, read from the shipped
+# `path_irc.freq.molden`. The atom order in the file (`H, C, N`) is the
+# system's, which the reader checks.
+#
+# Which side: `backward`, and that is a reading rather than a preference. The
+# saddle is the HF/STO-3G one, and on GFN-FF that geometry is a minimum -
+# `irc_mode: hessian` refuses it by name ("lowest frequency 895.356 cm^-1"),
+# so the mode is a direction the other surface supplied. Walking it forward
+# on gfn_ff raises the energy (-0.368299 -> -0.306694 on the first probe) and
+# the walk, which refuses an uphill point, commits nothing; the backward side
+# of the same mode descends -0.368299 -> -0.681074 over four points. The
+# `-1184.09 cm^-1` in the file is the HF saddle's own frequency; it is used
+# here for its direction, not as a claim that gfn_ff has a saddle there.
+#
+# The cell is 10 A, so the molecule does not see its own image: the periodic
+# machinery is exercised, the minimum-image convention is a no-op at every
+# geometry here (the same trade `path_neb_xtb` states for its band).
+#
+# Functional test: `maxit` is the budget, not a convergence claim.
+#
+# What it needs from the host: xtb (GFN-FF), periodic.
+
+control:
+  title: path_irc_pbc
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: irc
+  maxit: 5
+  irc_direction: backward
+  irc_mode: molden
+  irc_mode_file: path_irc.freq.molden
+  path_radius: 0.15
+  path_inner_maxit: 12
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.150009101, 0.000000000, 0.304989560]
+  - [0.020988521, 0.000000000, 0.038392731]
+  - [-0.021596509, 0.000000000, 1.209028017]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

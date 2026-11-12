@@ -1,0 +1,52 @@
+version: 1.0
+name: qmmm_cluster_energy_test
+
+input:
+  atoms:
+    - O
+    - H
+    - H
+    - O
+    - H
+    - H
+  coordinates:
+    - [1.00000000, 1.00000000, 1.00000000]
+    - [2.00000000, 1.00000000, 1.00000000]
+    - [1.00000000, 2.00000000, 1.00000000]
+    - [5.00000000, 5.00000000, 5.00000000]
+    - [6.00000000, 5.00000000, 5.00000000]
+    - [5.00000000, 6.00000000, 5.00000000]
+  charges: 0
+  multiplicity: 1
+  # Same cluster as qmmm_cluster.yaml: boundary f f f, real-space
+  # Coulomb (no kspace), so the in-cell Q-Q correction has a literal
+  # minimum image. This case runs Flow 2 (`qmmm_energy`) on its own.
+  pbc: [0, 0, 0]
+  profile: qmmm_energy
+  method: ff
+  execution_mode: local
+  lammps_units: real
+  lammps_shake: 0
+  # Flow-2 partition: atoms 1-3 are the first water. The QM 0-order
+  # charges are the topology charges of that water, in qm_atoms order.
+  qm_atoms: [0, 1, 2]
+  q_qm: [-0.83, 0.415, 0.415]
+  # Electrostatic embedding: the QM region owns the QM-MM Coulomb term, so
+  # qmmm_el = sum q_qm.V is subtracted from the classical side. This is
+  # what makes the shipped .esfp matter instead of being read and ignored.
+  embedding: true
+  # Flow-1 V/E for this geometry, captured from the field case's own
+  # `<title>.esfp` (atomic units: V Ex Ey Ez). The energy task does not
+  # re-run the probe, so a standalone case has to ship it; the file is
+  # staged into the launch directory by the skill-test converter.
+  qmmm_field_file: qmmm_cluster_test_qmmm_field.esfp
+
+expected:
+  # Shape-only, like the two field cases: the classical total depends on
+  # the LAMMPS build's real-space table, and the value check that matters
+  # (E_classic = U_main - U_gas - q.V) lives in the framework round.
+  energy:
+    value: null
+    tolerance: 1e-6
+  gradient:
+    shape: [1, 6, 3]

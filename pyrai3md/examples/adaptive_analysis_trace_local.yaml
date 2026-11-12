@@ -1,0 +1,117 @@
+# Adaptive feature test: analyze_trace (gap, force, population, drift, distance).
+# One feature per carrier; see dev/methods/ADAPTIVE_DEVELOPMENT.md section 16.
+control:
+  title: adaptive_ethylene
+  jobtype: adaptive
+  theory:
+  - nn
+  reference:
+  - pyscf
+  gl_seed: 20261105
+atoms:
+- C
+- C
+- H
+- H
+- H
+- H
+coordinates:
+- - -1.12019105
+  - 0.0
+  - -2.661941306
+- - -1.12019105
+  - 0.0
+  - -1.331783306
+- - -0.59058441
+  - 0.756356668
+  - -3.234891306
+- - -1.64979769
+  - -0.756356668
+  - -3.234891306
+- - -1.876547718
+  - -0.52960664
+  - -0.758833306
+- - -0.363834382
+  - 0.52960664
+  - -0.758833306
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci:
+  - 2
+  spin:
+  - 0
+md:
+  initcond: read
+  ninitcond: 2
+  step: 20
+  size: 20.67
+  root: 1
+  activestate: 0
+  sfhp: nosh
+  nactype: ktdc
+  rk4: 1
+  format: molden
+adaptive:
+  maxiter: 2
+  maxsample: 1
+  record_step: 4
+  keep_md: 1
+  load: 1
+  md_multitask: true
+  md_multipool: 2
+  md_remotetask: false
+  reference_multitask: true
+  reference_multipool: 2
+  reference_remotetask: 0
+  remote_train: 0
+  maxenergy: 0.002
+  minenergy: 0.001
+  maxgrad: 0.015
+  mingrad: 0.005
+  check_population: 0
+  check_energy_order: 0
+  gap_tolerance: 1.0e-06
+  sample_energy: 1
+  sample_grad: 1
+  sample_nac: 0
+  sample_soc: 0
+  sample_dipole: 0
+  sample_transition_dipole: 0
+  sample_oscillator_strength: 0
+  analyze_trace: 1
+nn:
+  method: mlp_eg
+  modeldir: ./nn_ethylene_init
+  train_data: ./egs_ethylene_100.json
+  mult_nn: 2
+  nstate: 2
+  target_states:
+  - 0
+  - 1
+  predict_thread: 1
+  thread: 1
+  write_step_log: 0
+  predict_std: 0
+  execution_mode: local
+  scratch_path: ./scratch
+  eg:
+    depth: 2
+    nn_size: 16
+    batch_size: 5
+    epo: 1
+    learning_rate: 0.001
+    epostep: 1
+    loss_weights: 1 10
+    val_split: 0.1
+pyscf:
+  method: tda
+  functional: pbe
+  basis: sto-3g
+  nstate: 2
+  target_states:
+  - 0
+  - 1
+  execution_mode: local
+  keep_tmp: 0
+  thread: 1

@@ -1,0 +1,56 @@
+# Constraint example for the merged constraint subsystem.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_restart.yaml
+# Run in two parts, which is the point of the case:
+#   pyrai3md constraint_md_restart.yaml      # 4 steps, checkpoint at 2
+#   pyrai3md constraint_md_restart_example.rt                                   # resume, +4 steps
+# The resumed run must keep holding the bond at the length the FIRST structure
+# had. Re-capturing the target from the resumed geometry would turn the
+# checkpoint into a fresh experiment and hide exactly the drift the constraint is
+# there to prevent.
+#
+# What the two-process product owes the reader, measured against
+# constraint_md_restart_base.yaml (the same 8 steps in one process, same checkpoint
+# cadence): the same frame list [1..8], the same time column, coordinates equal to
+# 0.000e+00 A on every frame, and exactly four force evaluations in the second
+# process - a checkpoint already carries the potential surface of the step it was
+# taken at, so a resume does not warm up (D-19, D-24).
+control:
+  title: constraint_md_restart_example
+  jobtype: md
+  gl_seed: 20260929   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 4
+  checkpoint: 2
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  shake_bond: [[1, 2, 1, 3]]
+  shake_tol: 1e-10
+  shake_id: oh_bonds

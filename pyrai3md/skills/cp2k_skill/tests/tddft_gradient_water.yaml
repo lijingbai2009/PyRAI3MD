@@ -1,0 +1,50 @@
+# Periodic TDDFT gradient over a 4-water cell (12 atoms, 6.3 A cube).
+# It used to carry `stress: true` as the excited-state stress placeholder's
+# witness; CP2K has no stress tensor for a TDDFT run -- it prints the TDDFT
+# forces and aborts in response_solver.F:943, measured in the test environment in
+# rounds tmp_20261010_133424 and tmp_20261010_190544 -- so a route that asks
+# the engine for a tensor (`analytical`) is refused by
+# `schema/validate.py` before an engine is ever paid for. An excited-state
+# tensor is reachable through `stress_method: num`, the external strain
+# finite difference, certified by `tddft_stress_num.yaml`; the ground-state
+# analytical channel is certified by `dft_stress.yaml`.
+version: 1.0
+name: tddft_gradient_water_test
+input:
+  atoms: [O, H, H, O, H, H, O, H, H, O, H, H]
+  coordinates:
+    - [1.575000000, 1.575000000, 1.575000000]
+    - [2.331950327, 1.575000000, 2.160882277]
+    - [0.818049673, 1.575000000, 2.160882277]
+    - [1.575000000, 4.725000000, 4.725000000]
+    - [2.331950327, 4.725000000, 5.310882277]
+    - [0.818049673, 4.725000000, 5.310882277]
+    - [4.725000000, 1.575000000, 4.725000000]
+    - [5.481950327, 1.575000000, 5.310882277]
+    - [3.968049673, 1.575000000, 5.310882277]
+    - [4.725000000, 4.725000000, 1.575000000]
+    - [5.481950327, 4.725000000, 2.160882277]
+    - [3.968049673, 4.725000000, 2.160882277]
+  lattice_vector:
+    - [6.3, 0.0, 0.0]
+    - [0.0, 6.3, 0.0]
+    - [0.0, 0.0, 6.3]
+  pbc: [1, 1, 1]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  target_states: [0, 1]
+  current_state: 1
+  profile: tddft_gradient
+  method: tddft
+  functional: pbe
+  cutoff: 400
+  ref_cutoff: 50
+  execution_mode: local
+
+expected:
+  energy:
+    shape: [3]
+  gradient:
+    shape: [3, 12, 3]

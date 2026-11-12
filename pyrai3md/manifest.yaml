@@ -1,0 +1,196 @@
+# Framework manifest. Same discovery vocabulary as skills/*/manifest.yaml,
+# but the thing it describes is the framework itself: the input schema a
+# user may write and the code entry points that consume it.
+#
+# `keywords` lists the accepted input names. Types, defaults and the
+# classic-input spelling live in the table/model named next to each
+# section, so this file cannot become a second source of truth for them.
+name: pyrai3md
+version: "3.0.0-dev"
+description: >-
+  Modular framework for quantum chemistry, machine learning potentials,
+  molecular dynamics and adaptive workflows. The framework owns protocols
+  and orchestration; each scientific engine is a skill under pyrai3md/skills.
+
+entry_points:
+  cli:
+    module: pyrai3md.pmd
+    function: run
+    main: pyrai3md.pmd.main
+    console_script: pyrai3md
+  agent:
+    module: pyrai3md.agent
+    class: PyRAI3Agent
+    main: pyrai3md.agent.main
+  runtime_file:
+    suffix: .rt
+    module: pyrai3md.pmd
+    function: _execute_runtime_file
+
+pipeline:
+  parse_classic: pyrai3md.interface.parser.parse_input
+  load_agent_config: pyrai3md.interface.loader.load_config
+  load_runtime: pyrai3md.data.runtime.serializer.load_state
+  build_config: pyrai3md.schema.adapter.build_config
+  normalize: pyrai3md.schema.normalize.normalize
+  validate: pyrai3md.schema.validate.validate
+  build_state: pyrai3md.data.build.build_state
+  execute: pyrai3md.workflow.execute
+
+units:
+  energy: hartree
+  gradient: hartree/bohr
+  stress: hartree/bohr^3
+
+capabilities: [energy, gradient, hessian, nac, soc, dipole, transition_dipole,
+              overlap, stress, field, qmmm]
+
+workflows:
+  optimize: pyrai3md.workflow.optimize.Optimize
+  path: pyrai3md.workflow.path.Path
+  md: pyrai3md.workflow.md.AIMD
+  surface_hopping: pyrai3md.workflow.md.AIMD
+  frequency: pyrai3md.workflow.hessian.Hessian
+  hessian: pyrai3md.workflow.hessian.Hessian
+  num_hess: pyrai3md.workflow.hessian.Hessian
+  num_freq: pyrai3md.workflow.hessian.Hessian
+  scan: pyrai3md.workflow.scan.Scan
+  train: pyrai3md.workflow.train.Train
+  prediction: pyrai3md.workflow.prediction.Prediction
+  adaptive: pyrai3md.workflow.adaptive.AdaptiveSampling
+  search: pyrai3md.workflow.search.GridSearch
+  read: pyrai3md.workflow.read.read_calculations
+
+resources:
+  multitask: {keyword: multitask, default: null}
+  remotetask: {keyword: remotetask, default: null}
+  multipool: {keyword: multipool, default: 1}
+
+input_schema:
+  section_aliases:
+    molecule: system
+    md: dynamics
+    constraint: system.constraints
+    system_constraint: system.constraints
+  keyword_aliases:
+    qm: theory
+    abinit: reference
+    temp: temperature
+    lattice: lattice_vector
+  sections:
+    control:
+      model: pyrai3md.schema.config.Control
+      types: pyrai3md.schema.adapter.CONTROL_TYPES
+      keywords:
+        [title, jobtype, theory, reference, qm, abinit, driver,
+         multiscale_type, gl_seed, verbose, silent, debug, skill_name,
+         skill_path]
+    molecule:
+      model: pyrai3md.schema.config.System
+      types: pyrai3md.schema.adapter.MOLECULE_TYPES
+      keywords:
+        [ci, spin, coupling, current_state, qmmm_key, qmmm_xyz, q_qm,
+         external_charges, highlevel, midlevel, highref, midref, embedding,
+         read_charge, qm_contains_field_gradient, sc_charge,
+         sc_charge_maxiter, sc_charge_threshold, sc_charge_damping,
+         center_groups, track_type, track_index, track_thrhd, track_stop,
+         cell, lattice, pbc, multitask, remotetask, multipool]
+    md:
+      model: pyrai3md.schema.config.Dynamics
+      types: pyrai3md.schema.adapter.MD_TYPES
+      keywords:
+        [initcond, ninitcond, method, format, multitask, remotetask,
+         multipool, randvelo, temp, step, size, root, activestate, history,
+         sfhp, nactype, phasecheck, gap, gapsoc, addsoc, dosoc, dodipole,
+         radiative, substep, rk4, integrate, deco, adjust, reflect, maxh,
+         fssh_rk4, fssh_dpdt, fssh_matb, fssh_ktdc, fssh_decoherence,
+         fssh_profile, perf_profile, fssh_force_hop, thermodelay, dissipate,
+         thermostat, barostat, ensemble, pressure, thermostat_chain,
+         thermostat_tau, barostat_tau, compressibility, barostat_mode,
+         thermostat_mass, barostat_mass, md_maxenergy, md_maxgrad, md_maxnac,
+         md_maxsoc, md_maxpop, direct, buffer, checkpoint, excess, scale,
+         target, reset, resetstep]
+    optimize:
+      model: pyrai3md.schema.config.Optimize
+      types: pyrai3md.schema.adapter.OPTIMIZE_TYPES
+      keywords:
+        [multipool, opt_method, opt_maxit, opt_energy, opt_grms, opt_gmax,
+         opt_drms, opt_dmax, opt_csrms, opt_csmax, opt_cerms, opt_cemax,
+         opt_pressure, opt_cell_coupling, opt_trust_radius, opt_use_rfo,
+         opt_state_i, opt_state_j, optimize_cell, opt_path_constraint,
+         opt_path_radius, opt_path_inner_maxit, opt_path_inner_tol,
+         opt_irc_direction, opt_irc_mode, opt_irc_mode_file,
+         opt_neb_reactant, opt_neb_product, opt_neb_ts, opt_neb_images,
+         opt_neb_interpolate, opt_neb_geodesic_threshold,
+         opt_neb_geodesic_scaler, opt_neb_geodesic_min_neighbors,
+         opt_neb_spring, opt_neb_climb, opt_neb_climb_threshold, opt_neb_step]
+    hessian:
+      model: pyrai3md.schema.config.Hessian
+      types: pyrai3md.schema.adapter.HESSIAN_TYPES
+      keywords:
+        [multitask, remotetask, multipool, hess_driver, hess_mode, hess_step,
+         hess_vibration, hess_thermo, hess_molden, hess_temperature,
+         hess_pressure, hess_scale, hess_cutoff, hess_alpha, hess_symmetry,
+         hess_linear, hess_atoms]
+    search:
+      model: pyrai3md.schema.config.Search
+      types: pyrai3md.schema.adapter.SEARCH_TYPES
+      keywords:
+        [grid, retrieve, sort_by, sort_stat, sort_order, grid_root, max_grid,
+         multitask, remotetask, multipool]
+    adaptive:
+      model: pyrai3md.schema.config.Adaptive
+      types: pyrai3md.schema.adapter.ADAPTIVE_TYPES
+      keywords:
+        [remote_train, load, transfer, pop_step, maxiter, maxsample,
+         record_step, keep_md, check_population,
+         check_energy_order, gap_tolerance, sample_energy, sample_grad,
+         sample_nac, sample_soc, sample_dipole, sample_transition_dipole,
+         sample_oscillator_strength, dynsample, maxdiscard, maxmae,
+         analyze_pes,
+         analyze_gap, analyze_trace, analyze_coverage, analyze_window,
+         analyze_local_tolerance, analyze_global_tolerance, predict_mode,
+         gap_threshold, explore_udd, explore_gap, udd_mode, udd_amplitude,
+         udd_width, udd_start_iteration, gap_method, gap_pair, gap_height,
+         gap_width, multitask, remotetask, multipool, md_multitask,
+         md_remotetask, md_multipool, reference_multitask,
+         reference_remotetask, reference_multipool, refine, refine_num,
+         refine_start, refine_end, refine_gap, maxenergy, minenergy,
+         dynenergy, inienergy, fwdenergy, bckenergy, maxgrad, mingrad,
+         dyngrad, inigrad, fwdgrad, bckgrad, maxnac, minnac, dynnac, ininac,
+         fwdnac, bcknac, maxsoc, minsoc, dynsoc, inisoc, fwdsoc, bcksoc]
+    train:
+      model: pyrai3md.schema.config.Train
+      keywords:
+        [multitask, remotetask, multipool, permutation_map]
+    prediction:
+      model: pyrai3md.schema.config.Prediction
+      keywords:
+        [multitask, remotetask, multipool]
+    read:
+      model: pyrai3md.schema.config.Read
+      types: pyrai3md.schema.adapter.READ_TYPES
+      keywords:
+        [path, project, profile, energy, gradient, nac, soc]
+    composite:
+      model: pyrai3md.schema.config.Composite
+      types: pyrai3md.schema.adapter.COMPOSITE_TYPES
+      keywords:
+        [executor, max_workers]
+    environment:
+      model: pyrai3md.schema.config.Environment
+      keywords:
+        [shell, environment, program, version, device, program_path,
+         scratch_path, slurm_time, slurm_partition, slurm_ntasks, num_gpu,
+         slurm_memory, slurm_command, slurm]
+    constraint:
+      model: pyrai3md.schema.config.SystemConstraintConfig
+      keywords:
+        [units, groups, cvs, biases, walls, fixes, constraints, metadynamics,
+         notes]
+
+# The two aliases above are the retired spellings of the method queues.
+# `qm`/`abinit` are read as `theory`/`reference` in &control, and a method
+# label may carry the same prefix (`qm.pyscf`, `abinit.orca`); schema
+# normalize strips it in one place (`skills.query.method_label`) before
+# any consumer sees the label.

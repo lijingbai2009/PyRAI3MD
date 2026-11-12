@@ -1,0 +1,38 @@
+version: 1.0
+name: xmscaspt2_nac_test
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  profile: xmscaspt2_nac
+  method: xmscaspt2
+  basis: sto-3g
+  pt2_shift: 0.2
+  scf_converge: 1e-6
+  nact_elec: 2
+  nact_orb: 2
+  nclosed: 7
+  active: [8, 9]
+  coupling: [[0, 1], [1, 2]]
+  target_nac_pair: [[0, 1], [1, 2]]
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [3]
+    tolerance: 1e-6
+  nac:
+    value: null
+    shape: [2, 6, 3]
+    tolerance: 1e-6

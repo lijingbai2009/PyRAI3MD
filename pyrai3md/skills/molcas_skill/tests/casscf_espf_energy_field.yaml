@@ -1,0 +1,34 @@
+# Field twin of casscf_espf_energy.yaml: the same two external point charges
+# expressed as V/E at each nucleus (atomic units).
+version: 1.0
+name: casscf_espf_energy_field_test
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+  - [-1.12019105, 0.0, -2.661941306]
+  - [-1.12019105, 0.0, -1.331783306]
+  - [-1.12019105, 0.923341, -3.234891306]
+  - [-1.12019105, -0.923341, -3.234891306]
+  - [-2.04353205, 0.0, -0.758833306]
+  - [-0.19685005, 0.0, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 1
+  state_spin: [0]
+  jobtype: energy
+  profile: casscf_properties
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 2
+  inactive_orb: 7
+  execution_mode: local
+  external_potential:
+  - [-0.135774924, 0.0173259355, 0.0, -0.0421938884]
+  - [-0.0556734442, 0.0043797595, 0.0, -0.0248749941]
+  - [-0.1682635745, 0.0257428494, -0.0212190843, -0.0453530769]
+  - [-0.1682635745, 0.0257428494, 0.0212190843, -0.0453530769]
+  - [-0.0258049988, 0.0029764055, 0.0, -0.0184498897]
+  - [-0.0328014145, 0.0004321243, 0.0, -0.0239467159]
+expected:
+  energy: {value: null, tolerance: 1.0e-06}

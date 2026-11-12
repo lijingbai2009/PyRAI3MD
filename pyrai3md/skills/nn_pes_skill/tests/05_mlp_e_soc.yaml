@@ -1,0 +1,36 @@
+version: 1.0
+name: nn_pes_soc_test
+# Serve the spin-orbit ensemble case 04 trained: one value per declared pair,
+# in cm-1, and no gradient channel with it.
+
+input:
+  atoms: [C, C, C, C]
+  coordinates:
+    - [-2.9083132, 7.8411096, -0.0702194]
+    - [-1.6931105, 8.4133693, 0.6512565]
+    - [-3.8459958, 8.3900949, 1.1666596]
+    - [-1.0216257, 7.4429598, 1.6028474]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 1]
+  # One spin value per ci block: two singlets and one triplet.
+  ci: [2, 1]
+  spin: [0, 1]
+  # A skill case spells coupling as 0-based typed pairs (the same reading
+  # molcas_skill's cases use); the 1-based form belongs to the classic text.
+  coupling: [[0, 1], [0, 2], [1, 2]]
+  nac_pair_map: [[0, 1]]
+  soc_pair_map: [[0, 2], [1, 2]]
+  profile: mlp_e_soc
+  method: mlp_e
+  execution_mode: local
+  scratch_path: ./tmp
+  # Named here rather than derived: the flat config the skill entry point
+  # reads carries no project, so leaving it out lets the service modes and
+  # the standalone mode write their products into different directories.
+  nn_project: NN_SOC
+  modeldir: ./nn_soc
+  mult_nn: 2
+  target_states: [0, 1, 2]
+  target_soc_pair: [[0, 2], [1, 2]]

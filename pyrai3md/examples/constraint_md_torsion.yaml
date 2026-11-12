@@ -1,0 +1,64 @@
+# Constraint example, aperiodic: a dihedral constraint on a real engine, for the first time.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_torsion.yaml
+#
+# HOOH (hydrogen peroxide) at HF/STO-3G is the smallest molecule whose torsion a
+# quantum engine prices, and the declared row is atoms 3-1-2-4, i.e. H-O-O-H, at
+# the 160 deg the construction actually builds. Torsion is the third branch of
+# the multi-condition solver (bond, angle, dihedral) and until #277 it had only
+# ever been measured offline.
+#
+# Measured over the five recorded frames: the torsion is held to 2.625e-10 deg,
+# while the undeclared O-O bond moves 8.435e-03 A and an undeclared O-H moves
+# 3.823e-02 A - those two are the controls, because a projection that froze the
+# whole molecule would also "hold" a torsion perfectly.
+#
+# Unit note so nobody over-reads the tolerance: `tolerance` in a strict
+# constraint is a dimensionless relative residual (constraints/shake.py line 48),
+# while 2.625e-10 is a physical spread in degrees. The product is reported as
+# measured; the two numbers are not the same kind of quantity.
+#
+# Uncovered cell, stated rather than hidden: the periodic side of a dihedral
+# needs a fixture whose force field carries a torsion term, and the TIP3P water
+# box used by every periodic draft has none. So the torsion branch is measured on
+# PySCF only.
+control:
+  title: constraint_md_torsion_example
+  jobtype: md
+  gl_seed: 20261001   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.452000000]
+  - [-0.166982798, 0.947006507, -0.080749119]
+  - [-0.166982798, -0.947006507, 1.532749119]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 5
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  shake_dihedral: [[3, 1, 2, 4]]
+  shake_tol: 1e-10
+  shake_vel: rattle
+  shake_id: hooh

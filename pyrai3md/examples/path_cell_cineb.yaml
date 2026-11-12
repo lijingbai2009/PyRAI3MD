@@ -1,0 +1,64 @@
+# Variable-cell climbing-image band between two orientations in a box
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_cell_cineb.yaml
+#
+# A band whose images carry their own boxes: the two endpoint files declare the
+# cells, the band interpolates the cell linearly between them (the metric smooths
+# the nuclear path at each image's own cell - a stated trade, see
+# `utilities/geodesic.py`), each image's lattice half of the force is the stress
+# conjugate read on that image's own evaluation, and the objective under
+# `opt_pressure` is the enthalpy. `neb_climb` drives the highest image onto the
+# crossing saddle, whose box is then the crossing box.
+#
+# What it needs from the host: xtb (GFN-FF) and its periodic endpoint files. Not
+# run on this checkout, so its readings are unmeasured until a qualification
+# round; the endpoints `path_pbc_reactant.xyz` and `path_pbc_product.xyz` carry
+# their boxes in the extended-XYZ comment line.
+
+control:
+  title: path_cell_cineb
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_pbc_reactant.xyz
+  neb_product: path_pbc_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+  neb_climb: true
+  neb_climb_threshold: 0.05
+  optimize_cell: true
+  opt_pressure: 1000.0
+  opt_cell_coupling: isotropic
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.330000000]
+  - [0.000000000, 0.920000000, 0.000000000]
+  - [0.000000000, -0.920000000, 0.000000000]
+  - [0.000000000, 0.920000000, 1.330000000]
+  - [0.000000000, -0.920000000, 1.330000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

@@ -1,0 +1,52 @@
+# Nudged elastic band with an intermediate transition-state guess
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb_ts.yaml
+#
+# path_neb.yaml with `neb_ts: path_ts.xyz`, which splits the band into two
+# segments - reactant to guess, guess to product - with the interior images
+# divided between them in proportion to the two segment lengths. The guess is an
+# image like any other: it is relaxed rather than held, and `path_profile.txt`
+# marks its `role` as `ts` so a reader can see where it started.
+#
+# The shipped `path_ts.xyz` is the bridging geometry the shipped
+# `optimize_ts.yaml` also starts from (`optimize.method: ts` does not converge on
+# the test environment - the acceptance rule is an open item in `dev/TODO.md` - but the
+# geometry it stops on carries exactly one imaginary mode, -1184.09 cm-1 at
+# HF/STO-3G, which is what a saddle guess has to be). One image in the middle of
+# a short band is what the split gives with `neb_images: 3`.
+#
+# What it needs from the host: PySCF (five images per round).
+
+control:
+  title: path_neb_ts
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_reactant.xyz
+  neb_product: path_product.xyz
+  neb_ts: path_ts.xyz
+  neb_images: 3
+  neb_interpolate: geodesic
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [0.000000000, 0.000000000, 1.055827000]
+  - [0.000000000, 0.000000000, -0.010776000]
+  - [0.000000000, 0.000000000, -1.145051000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

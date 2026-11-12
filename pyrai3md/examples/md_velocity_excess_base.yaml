@@ -1,0 +1,50 @@
+# Baseline for the initial-velocity control pair: nothing is scaled.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md md_velocity_excess_base.yaml
+#
+# Identical to md_velocity_excess.yaml except for the `excess` keyword, so the
+# Ekin column of their first recorded steps differs by exactly the declared
+# 5.0e-4 Ha and the two trajectories then run the same dynamics from two
+# different starting kinetic energies.
+
+control:
+  title: md_velocity_excess_base_example
+  jobtype: md
+  gl_seed: 20261008
+  theory: [pyscf]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, -0.000000000, -2.649741092]
+  - [-1.120191050, 0.000000000, -1.343983520]
+  - [-0.472508457, 0.648151398, -3.225344333]
+  - [-1.767873643, -0.648151398, -3.225344333]
+  - [-1.768342448, -0.647682593, -0.768380279]
+  - [-0.472039652, 0.647682593, -0.768380279]
+
+velocities:
+  - [0.000233177, -0.000042299, -0.000208531]
+  - [-0.000217441, 0.000195315, 0.000185800]
+  - [-0.000893166, -0.000054466, 0.000176273]
+  - [0.001361820, -0.000285727, 0.000253295]
+  - [-0.000024165, -0.000666228, 0.000131482]
+  - [-0.000631993, -0.000816868, -0.000290190]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 3
+  size: 20.67
+  temperature: 300

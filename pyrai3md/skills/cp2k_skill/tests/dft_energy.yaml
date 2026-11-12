@@ -1,0 +1,31 @@
+version: 1.0
+name: dft_energy_test
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  lattice_vector:
+    - [10.0, 0.0, 0.0]
+    - [0.0, 10.0, 0.0]
+    - [0.0, 0.0, 10.0]
+  pbc: [1, 1, 1]
+  charges: 0
+  multiplicity: 1
+  nstate: 1
+  state_spin: [0]
+  target_states: [0]
+  profile: dft_energy
+  method: dft
+  functional: pbe
+  cutoff: 400
+  ref_cutoff: 50
+  execution_mode: local
+
+expected:
+  energy:
+    shape: [1]

@@ -1,0 +1,50 @@
+# Nudged elastic band over a single-centre multiscale composite
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator composite (3 tasks per image)
+# Run: pyrai3md path_neb_multiscale.yaml
+#
+# The single-centre multiscale arm of the path family. One centre whose model
+# region is the whole system, two layers of the same program
+# (`theory: [pyscf, pyscf]`, the second binding keyed by its role), so the
+# composite reduces to the high layer's surface: the path is the same one the
+# single-layer case walks, evaluated as a sum of layered terms. That is the check
+# this file is for - with the model region covering the whole system, the
+# composite path reproduces the single-layer one.
+#
+# What is out of scope: more than one centre. A path interpolates between
+# structures, and a multi-centre partition has no single structure to
+# interpolate; this round ships no example for it (see
+# dev/methods/PATH_DEVELOPMENT.md section 14).
+#
+# What it needs from the host: PySCF (three tasks per evaluation).
+control:
+  title: path_neb_multiscale
+  jobtype: optimize
+  theory: [pyscf, pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 3
+  neb_reactant: path_reactant.xyz
+  neb_product: path_product.xyz
+  neb_images: 3
+  neb_interpolate: geodesic
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [0.000000000, 0.000000000, 1.055827000]
+  - [0.000000000, 0.000000000, -0.010776000]
+  - [0.000000000, 0.000000000, -1.145051000]
+molecule:
+  charges: 0
+  multiplicity: 1
+  highlevel: [[1, 2, 3]]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

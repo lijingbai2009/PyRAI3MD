@@ -1,0 +1,86 @@
+# Minimum energy path over a single-centre multiscale composite on a moving box
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator composite (3 tasks per evaluation)
+# Run: pyrai3md path_cell_mep_multiscale.yaml
+#
+# The arm the classification asks for: a single-centre composite whose
+# environment is a force field, on a lattice that is a variable. The centre is
+# the ethylene (rows 1-6) under PySCF; the environment is the whole 12-atom box
+# under xtb/GFN-FF, which is the layer that carries the cell and therefore the
+# layer whose stress conjugates the box (`optimizer/base.py::_cell_stress` reads
+# `state.active_stress`, the structural-track provider's whole-system tensor).
+# The centre has no stress of its own - PySCF answers none - so `Cell Gap Term`
+# is zero by the shape of the plan, not by a missing producer, and the box
+# follows the outer layer.
+#
+# What this adds to `path_mep_multiscale` (fixed cell, PySCF twice over one
+# centre): the cell half of a layered path. The box's force comes from the same
+# layer the assembled energy's whole-system term does, and the path steers the
+# centre while the environment relaxes under 1 kbar.
+#
+# What it needs from the host: PySCF for the centre and xtb (GFN-FF, periodic)
+# for the environment - three tasks per evaluation.
+#
+# Functional test: `maxit` is the budget here, not a convergence claim.
+#
+# Round `tmp_20261022_151713` ran both carriers (identical profiles): 3
+# accepted points, -77.3231 -> -77.6418 Hartree over 0.15 Bohr of arc,
+# volume 1000.000 -> 1000.155 A^3, three tasks per evaluation.
+
+control:
+  title: path_cell_mep_multiscale
+  jobtype: optimize
+  theory: [pyscf, xtb]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 3
+  path_radius: 0.05
+  path_inner_maxit: 12
+  path_constraint: sphere
+  optimize_cell: true
+  opt_pressure: 1000.0
+  opt_cell_coupling: isotropic
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+
+atoms: [C, C, H, H, H, H, O, H, H, O, H, H]
+coordinates:
+  - [5.000000000, 5.000000000, 5.000000000]
+  - [5.000000000, 5.000000000, 6.330000000]
+  - [5.000000000, 5.920000000, 5.000000000]
+  - [5.000000000, 4.080000000, 5.000000000]
+  - [5.000000000, 5.920000000, 6.330000000]
+  - [5.000000000, 4.080000000, 6.330000000]
+  - [2.000000000, 2.000000000, 2.000000000]
+  - [2.957200000, 2.000000000, 2.000000000]
+  - [1.760100000, 2.927100000, 2.000000000]
+  - [8.000000000, 8.000000000, 8.000000000]
+  - [8.957200000, 8.000000000, 8.000000000]
+  - [7.760100000, 8.927100000, 8.000000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  highlevel: [[1, 2, 3, 4, 5, 6]]
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

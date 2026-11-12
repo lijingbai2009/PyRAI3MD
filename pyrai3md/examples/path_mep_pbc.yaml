@@ -1,0 +1,114 @@
+# Minimum energy path in a periodic cell, on a force field
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_mep_pbc.yaml
+#
+# Fixtures: h2o.data + h2o.in.init + h2o.in.settings (the shipped 60-atom TIP3P box)
+#
+# The fixed-cell arm of the path family: the walk's distances are the nearest
+# periodic images, each frame is written with the extended-XYZ cell comment, and
+# the probe the backend evaluates is the one the walker adopted back out of the
+# state after the wrap. The start is one water pulled 0.35/0.25 A off its
+# minimum, so the walk has a gradient to leave on.
+#
+# `path_radius: 0.05` is a reading, not a default. The box is strained, and on
+# it a 0.1 Bohr shell takes a first step that raises the energy by 0.31 Hartree
+# - the walk then spends its probe budget coming back and accepts no point at
+# all. At 0.05 it accepts four points down a monotone profile
+# (-0.2816 -> -0.3864 Hartree over 0.20 Bohr of arc) and at 0.01 the same walk
+# is still monotone but covers a fifth of that. The earlier 0.1 was measured
+# against a seed one box off the geometry the run evaluated (the defect
+# `pathbase.py::_continuous_atoms` closes), so the shell it was tuned on was
+# not the one this walk is on.
+#
+# What it needs from the host: LAMMPS (the shipped force field, read by project
+# name from the launch directory).
+control:
+  title: path_mep_pbc
+  jobtype: optimize
+  theory: [lammps]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 4
+  path_radius: 0.05
+  path_inner_maxit: 10
+  path_constraint: sphere
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+
+atoms: [O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H, O, H, H]
+coordinates:
+  - [0.71682575, 4.26297575, 7.06415575]
+  - [0.92265575, 3.52873575, 6.41610575]
+  - [0.48639575, 3.50336575, 7.91973575]
+  - [7.35580575, 7.20376575, 2.02566575]
+  - [6.50434575, 7.08944575, 1.60874575]
+  - [8.01627575, 7.49074575, 1.38230575]
+  - [7.71454575, 2.91779575, 2.48749575]
+  - [8.36737575, 2.34356575, 2.05967575]
+  - [7.21075575, 3.31718575, 1.68727575]
+  - [6.27732575, 4.35033575, 0.60371575]
+  - [5.34131575, 4.50063575, 0.93744575]
+  - [6.29680575, 4.96560575, 8.22037575]
+  - [0.28723575, 7.93763575, 7.96855575]
+  - [1.05887575, 7.37359575, 8.10594775]
+  - [0.21300575, 7.73452575, 6.98134575]
+  - [4.19392575, 7.00736575, 5.83599575]
+  - [4.97065575, 6.95089575, 6.27768575]
+  - [3.52057575, 6.82459575, 6.55542575]
+  - [4.67333575, 7.58244575, 1.93619575]
+  - [4.15809575, 7.09710575, 2.56797575]
+  - [5.03395575, 8.30782575, 2.48553575]
+  - [0.24210575, 5.40514575, 3.50106575]
+  - [7.94032575, 5.97303575, 3.10104575]
+  - [8.34879575, 4.48706575, 3.27585575]
+  - [6.82888575, 5.78277575, 7.10760575]
+  - [7.34232575, 6.46205575, 6.53949575]
+  - [7.54422575, 5.14299575, 7.19830575]
+  - [3.13850575, 5.24862575, 3.47426575]
+  - [2.22043575, 5.15072575, 3.71901575]
+  - [3.67844575, 4.91285575, 4.20044575]
+  - [2.80951575, 0.20898575, 4.39121575]
+  - [3.39139575, 8.07818575, 5.02447575]
+  - [3.25688575, 1.07826575, 4.53899575]
+  - [0.89768575, 7.17105575, 5.48086575]
+  - [0.84282575, 6.35609575, 4.95774575]
+  - [1.52947575, 7.70909575, 4.99667575]
+  - [3.46447575, 1.33217575, 0.22395575]
+  - [3.57476575, 0.40522575, 0.54806575]
+  - [4.24142575, 1.37676575, 8.13631575]
+  - [0.81778575, 1.94258575, 0.48313575]
+  - [1.83552575, 1.88001575, 0.35380575]
+  - [0.54606575, 1.03074575, 0.20782575]
+  - [6.16361575, 1.96857575, 7.25399575]
+  - [6.40479575, 2.67987575, 7.85211575]
+  - [7.00533575, 1.76515575, 6.86209575]
+  - [6.33454575, 0.90541575, 3.48030575]
+  - [7.02597575, 0.28866575, 3.10541575]
+  - [6.73429575, 1.73907575, 3.09810575]
+  - [4.59594575, 1.99901575, 5.06488575]
+  - [5.27202575, 1.58749575, 4.43246575]
+  - [5.16901575, 2.10181575, 5.86238575]
+  - [3.29199575, 6.58177575, 8.29598575]
+  - [3.80415575, 6.97076575, 0.55589575]
+  - [3.16278575, 5.67567575, 0.27826575]
+  - [3.39957575, 4.14252575, 0.99076575]
+  - [3.13110575, 4.32750575, 1.89879575]
+  - [3.39510575, 3.12591575, 0.93086575]
+  - [1.81846575, 2.56702575, 5.48308575]
+  - [1.72104575, 1.66724575, 5.19671575]
+  - [2.82470575, 2.71935575, 5.49371575]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  cell: [8.39909100, 8.39909100, 8.39909100, 90.00000000, 90.00000000, 90.00000000]
+
+lammps:
+  method: ff
+  lammps_project: h2o
+  ewald_accuracy: 1e-4
+  lammps_shake: 0
+  python_enabled: true

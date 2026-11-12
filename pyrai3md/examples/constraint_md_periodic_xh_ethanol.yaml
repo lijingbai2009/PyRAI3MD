@@ -1,0 +1,93 @@
+# Constraint example, X-H wildcard on a real force field: every hydrogen bond of ethanol.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_periodic_xh_ethanol.yaml
+# Resident LAMMPS service (python_enabled: true). Two gaps in the
+# compressed force-field model had to close for this project: dihedral and
+# improper entity rows were out of scope for renumbering, and a template
+# that lists only same-type `pair_coeff` rows was read as missing the cross
+# coefficients its `pair_modify mix arithmetic` line derives. Both are
+# covered now (service/builder/ff_model.py); the shipped box compresses 98
+# atom / 935 bond / 5312 angle / 986 dihedral library types down to 4/4/5/4.
+# Fixture: the launch directory needs ethanol.data + ethanol.in.init + ethanol.in.settings, shipped in `pyrai3md/examples/`.
+#
+# The wildcard the shortcut was asked for: `shake_bond_type X-H` holds every
+# bond between hydrogen and a heavy atom, so the input does not have to know
+# which heavy atoms the molecule carries. Ethanol is the case the water box
+# could not make - it has both an O-H and five C-H, so one line has to select
+# six rows of two different element combinations, and a spelling that only
+# worked for one of them would show up as six held bonds or as four.
+#
+# The fixture is FFautomator's (`ethanol/ethanol_ffa.yaml` ->
+# `ethanol/lammps/equilibration/ethanol.data`), on the structure this
+# repository's PySCF skill relaxed at PBE0/def2-SVP and ORCA evaluated at the
+# same level; the RESP charges come from that wavefunction. Same box, same
+# thermal draw as the torsion case, so the only variable is the constraint.
+#
+# What the case has to show, read from the framework's own products:
+#   1. all six perceived X-H bonds hold to the declared 1.0e-10 relative
+#      tolerance over the recorded frames, measured across the cell face;
+#   2. the bonds the wildcard must NOT take (C-C, C-O) move in the same run,
+#      which is what separates "six rows selected" from "the molecule froze";
+#   3. no H-H pair enters the row list: X is any element other than hydrogen,
+#      and the perception of this box finds no H-H bond to exclude, so the
+#      count of rows is the criterion for that rule rather than a refusal.
+control:
+  title: constraint_md_periodic_xh_ethanol_example
+  jobtype: md
+  gl_seed: 20261002   # the single seed source (md.seed had no field)
+  theory: [lammps]
+
+  # Test switch: a cell that leaves its own starting size interrupts the run
+  # instead of continuing it.
+  debug: true
+
+atoms: [C, C, O, H, H, H, H, H, H]
+coordinates:
+  - [1.58488900, 2.21504500, 0.77140300]
+  - [0.87576400, 0.88553400, 1.01372200]
+  - [0.44558800, 0.84016400, 2.35244900]
+  - [0.00000000, 0.00000000, 2.49727600]
+  - [2.63423000, 2.08278400, 0.47157500]
+  - [1.57202000, 2.78774800, 1.71025700]
+  - [1.08879700, 2.82112700, 0.00000000]
+  - [1.56201300, 0.04462600, 0.78786300]
+  - [0.01954500, 0.78155200, 0.31719300]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  cell: [10.0, 10.0, 10.0, 90.0, 90.0, 90.0]
+
+md:
+  initcond: 0
+  ninitcond: 1
+  temperature: 100.0
+  sfhp: nosh
+  step: 6
+  size: 20.67
+  direct: 1
+  buffer: 1
+  ensemble: nve
+  barostat: "off"
+  checkpoint: 0
+
+lammps:
+  method: ff
+  # The framework owns the geometry on this driver; the skill's own constraint
+  # keywords are inert (D-27).
+  lammps_shake: 0
+  python_enabled: true
+  lammps_project: ethanol
+  ewald_accuracy: 0.0001
+
+system_constraint:
+  # One line for the six X-H bonds. The rows are perceived from the bond graph
+  # of this structure and cell, so the input states no atom numbers at all.
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  shake_bond_type: [X-H]
+  shake_tol: 1e-10
+  shake_vel: rattle
+  shake_id: xh_bonds

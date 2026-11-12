@@ -1,0 +1,120 @@
+# A crossing search whose two surfaces both answer with a lattice derivative:
+# the single-method case for the branch that reads a state-resolved stress, on
+# the engine that can only hand one over by straining the box itself.
+#
+# Run: pyrai3md optimize_cell_gap_cp2k.yaml
+# Engine: CP2K. Refuses an analytical tensor for a TDDFT run ('Stress Tensor not
+# available for TDDFT calculations', response_solver.F:943, measured in rounds
+# tmp_20261010_133424 and tmp_20261010_190544), so the plan resolves to the
+# skill's own strain route, which returns one tensor PER STATE SOLVED - the shape
+# a box under two surfaces needs (`(nstate, 3, 3)`).
+#
+# What this case supplies that no other leg does. `optimize_cell_meci_multiscale
+# .yaml` answers `none: box carried by the outer layer`: its centre is a region
+# with no cell, so the lattice half of its step is the whole-system tensor and
+# the crossing objective contributes no lattice derivative of its own. Here there
+# is no outer layer to carry anything - one program, one box, two states - so the
+# search takes the two tensors it is handed and the run prints `Cell Gap Term
+# Source: state-resolved stress` (`optimizer/meci.py:137-149`,
+# `_cell_gap_conjugate`, :152-190). That is the third of the three source labels
+# `test_state_stress_pair.py` knows about, and until this file it had never been
+# read off a real engine.
+#
+# The guard this route has to get past, and why it does. The skill refuses to
+# differentiate through a degeneracy: `service/stress/num_stress.py::_state_guard`
+# (:285-330) rejects a central spectrum with an exactly zero gap, then demands
+# every strain point return the same number of roots and move no root by more
+# than half the smallest central gap, because past that the two sides of the
+# finite difference are not the same state any more. None of that is asked of this
+# geometry in vain: `tests/tddft_stress_num.yaml` certifies the (3,3,3) tensor on
+# this same ethylene, this same 10 A box and this same three-state manifold, and
+# `optimize_cell_cp2k.yaml` runs the strain route in the test environment through to a
+# ground-state energy that agrees with the certified value to the digit
+# (-13.56482679723119 Ha, round tmp_20261016_075328). What this refines about
+# #373's statement that the crossing lattice derivative has no producer: the
+# sentence is about a run standing AT an intersection, where the guard is right to
+# refuse. A search that walks toward one keeps its roots apart, and that is the
+# run this file is.
+#
+# Cost, measured in the test environment: one optimizer step is thirteen CP2K calls on
+# this system - one central plus twelve strain points, the six box components at
+# plus and minus the step - at no more than 390 s a step (round
+# tmp_20261016_075328, which the shared 1200 s backstop stopped mid-fourth).
+# Ruled on 2026-10-19: `maxit` comes down from five to two, the budget every
+# other cp2k cell case carries, because `optimize_cell_cp2k` - same 13-call step,
+# two steps - measured 13 m 41 s (821 s) and 13 m 37 s on its two carriers in
+# round tmp_20261019_122659, which is 68% of the shared 1200 s backstop spent by one
+# leg of a round that runs two hundred and fifty. Round tmp_20261019_200652 then
+# measured this example's own two legs at 735 s and 728 s inside that backstop
+# once each file declared two workers, so the 2400 s exception it used to carry
+# was removed on 2026-10-20 and every example answers to `_timeout`. What was NOT
+# done to make the box cheaper is the other lever this header
+# used to name: `stress_scope: iso` would cut the twelve strain points to three by
+# differentiating only the diagonal, and it is deliberately left off because the
+# off-diagonal lattice force is exactly what this branch is here to measure.
+control:
+  title: optimize_cell_gap_cp2k_example
+  jobtype: optimize
+  theory: [cp2k]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, 0.000000000, -2.661941306]
+  - [-1.120191050, 0.000000000, -1.331783306]
+  - [-1.120191050, 0.923341000, -3.234891306]
+  - [-1.120191050, -0.923341000, -3.234891306]
+  - [-2.043532050, 0.000000000, -0.758833306]
+  - [-0.196850050, 0.000000000, -0.758833306]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  # The manifold lives in the system section, not under `optimize`: it is what
+  # `Calculator.sync()` propagates to every task config (SYNC_SYSTEM_FIELDS,
+  # workflow/calculator.py:129-135), and the state count is what makes the cp2k
+  # schema derive a nonzero `tddft_nstates` at all.
+  ci: "3"
+  spin: "0"
+  pbc: [1, 1, 1]
+  cell: [10.0, 10.0, 10.0, 90.0, 90.0, 90.0]
+
+optimize:
+  method: mecp
+  # The pair the search drives. Two states of one spin manifold have no
+  # derivative coupling between them by symmetry, so this is the one-direction
+  # crossing search of `mecp.py`, not a missing input.
+  state_i: 1
+  state_j: 2
+  maxit: 2
+  opt_energy: 1.0e-4
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+  optimize_cell: true
+
+cp2k:
+  method: tddft
+  profile: tddft_gradient
+  functional: pbe0
+  cutoff: 400
+  ref_cutoff: 50
+  execution_mode: local
+  # The strain pool of the `num` stress route: the twelve perturbed points of a
+  # step are independent energy evaluations, and undeclared they run one after
+  # another (`service/stress/num_stress.py:381-385` reads a missing declaration
+  # as serial). Ruled on 2026-10-19: two workers. Not more, because the node
+  # budget this multiplies is `workers x cp2k_nproc x thread` and this
+  # deployment exports MPI_NP 1 / OMP_NUM_THREADS 1 per rank, so a pool of two is
+  # two ranks - a pool of four would be the skill test's shape, not this round's,
+  # where several examples run side by side. Oversubscription is only warned
+  # about, never refused (`_warn_oversubscription`), so the number is a choice
+  # with no guard behind it. What it buys is a round reading, not an extrapolated
+  # one: the serial leg it replaces measured 821 s for two steps on round
+  # tmp_20261019_122659.
+  multitask: true
+  multipool: 2

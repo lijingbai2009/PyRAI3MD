@@ -1,0 +1,73 @@
+# Velocity reset: remove the rigid rotation, not only the drift.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md md_velocity_reset.yaml
+#
+# The center-of-mass drift is removed on every step of every run, whatever the
+# input says (that is the flying-ice-cube half the framework has always done).
+# `reset 1` asks for the second half as well: the rigid rotation about the
+# mass-weighted principal axes is projected out and the velocities are rescaled
+# so the kinetic energy is what it was before the projection.
+#
+# `resetstep` says how often, counted on absolute step numbers, so a run split
+# into segments removes the rotation at the same steps a continuous run would
+# have. 0 (the case here) means the first step only; a positive value fires on
+# its multiples.
+#
+# A periodic box never takes this half, whatever `reset` says: the flow inside
+# a cell is the box's own angular momentum, and removing it would rewrite the
+# momentum balance the barostat reads.
+#
+# What to read, against the same input with `reset: 0`: the Ekin of the first
+# recorded step is the same number in both runs to every printed digit
+# (0.0588547073691704 Hartree here), because the projection rescales the
+# velocities so the kinetic energy it found is the kinetic energy it leaves. The
+# difference is in the trajectory, not the budget: the structure this input
+# writes is spinning, and by the last recorded frame the two carbon positions
+# have come apart by 7e-5 Angstrom, the run with the reset having stopped that
+# circulation at step 1.
+
+control:
+  title: md_velocity_reset_example
+  jobtype: md
+  gl_seed: 20261008
+  theory: [pyscf]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, -0.000000000, -2.649741092]
+  - [-1.120191050, 0.000000000, -1.343983520]
+  - [-0.472508457, 0.648151398, -3.225344333]
+  - [-1.767873643, -0.648151398, -3.225344333]
+  - [-1.768342448, -0.647682593, -0.768380279]
+  - [-0.472039652, 0.647682593, -0.768380279]
+
+# A pure drift plus a rotation about the C=C axis, written by hand so the
+# reset has something specific to remove.
+velocities:
+  - [0.001500000, 0.000000000, 0.000000000]
+  - [0.001500000, 0.000000000, 0.000000000]
+  - [0.001500000, 0.000600000, 0.000000000]
+  - [0.001500000, -0.000600000, 0.000000000]
+  - [0.001500000, -0.000600000, 0.000000000]
+  - [0.001500000, 0.000600000, 0.000000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 3
+  size: 20.67
+  temperature: 300
+  reset: 1
+  resetstep: 0

@@ -1,0 +1,39 @@
+version: 1.0
+name: xmscaspt2_dipole_test
+# State dipole moments at the XMS-CASPT2 level via a forces block
+# with the dipole keyword: one force grads entry per state with
+# ciderivative "false" (derivatives off), caspt2/smith method array.
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  profile: xmscaspt2_dipole
+  method: xmscaspt2
+  basis: sto-3g
+  pt2_shift: 0.2
+  scf_converge: 1e-6
+  nact_elec: 2
+  nact_orb: 2
+  nclosed: 7
+  active: [8, 9]
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [3]
+    tolerance: 1e-6
+  dipole:
+    value: null
+    shape: [3, 3]
+    tolerance: 1e-6

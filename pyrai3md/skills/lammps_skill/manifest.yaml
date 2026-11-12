@@ -1,0 +1,146 @@
+name: lammps
+backend:
+  module: backend
+  class: LammpsBackend
+# Periodic boundary support (read by query.get_metadata -> the
+# framework capability gate and the skill validation). LAMMPS supports
+# full 3D periodicity.
+supports_pbc: true
+units:
+  energy: hartree
+  gradient: hartree/bohr
+  stress: bar
+# Native results leave the backend in the LAMMPS run's units, marked with
+# the unit set it used ('_native_units': real|metal); the framework scales
+# them to the `units` contract above. The sign of a force is NOT declared
+# here: the skill already returns `gradient` = dU/dR, because that is what
+# the label means.
+conversion:
+  native_energy: {real: kcal/mol, metal: eV}
+  native_gradient: {real: kcal/mol/Angstrom, metal: eV/Angstrom}
+roles:
+  qm: false
+  qm2: false
+  mm: LammpsBackend
+capabilities:
+- energy
+- gradient
+- stress
+- geometry_optimization
+- classical_dynamics
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+# QM/MM task treatment (schema.config.System.qm_atoms / q_qm). It is
+# not a property capability: the energy/gradient gate above still decides
+# whether a task runs, and this block states what the task evaluates when
+# the switch is on and which parts of the classical surface the result
+# labels separately. Read by the framework once it plans a QM/MM task;
+# nothing in this skill gates on it today.
+qmmm:
+  scheme: additive_classical_two_flow
+  partition: qm_atoms
+  probe: qm_probe
+  # The numbers this skill writes in its qmmm result block, by the role
+  # the framework reads (logical name -> written key), and the unit set
+  # it writes them in when the block itself does not say (#3.4). The
+  # framework looks names up here instead of spelling them itself.
+  results:
+    # The probe's potential and field, and the classical terms.
+    v_mm: v_mm_native
+    e_mm: e_mm_native
+    e_classic: e_classic_native
+    u_main: u_main_native
+    u_gas: u_gas_native
+    qmmm_el: qmmm_el_native
+    qmmm_el_gradient: qmmm_el_gradient_native
+    u_gas_gradient: u_gas_gradient_native
+    u_gas_centers: u_gas_centers_native
+    default_units: real
+  index_base: 0
+  # Flow 1 (`qmmm_field`) is a q_Q=+1 A/B Coulomb probe that emits the
+  # MM potential/field at the QM atoms: .esfp in atomic units plus native
+  # V/E in the result. Flow 2 (`qmmm_energy`) evaluates the full force
+  # field with the QM 0-order charges and emits U_main, the Python
+  # in-cell U_gas and the qmmm_el dot product. The two profiles are
+  # separate tasks; neither is a modifier of ff_energy/ff_gradient.
+  # `qm_probe` narrows one flow-1 deck to the center it measures; empty
+  # means the whole QM set, which is every single-center run. The centers
+  # it does not measure carry their current 0-order charges on the
+  # environment side of the A/B difference, so their contribution survives
+  # the subtraction exactly like the MM one.
+  field_profile: qmmm_field
+  energy_profile: qmmm_energy
+  removes_qm_intra_bonded: true
+  retains_qm_image_electrostatics: true
+  # A/B runs per probe. One center means one probe per geometry; N centers
+  # mean N probes, each with its own resident instance and its own deck.
+  field_evaluations_per_geometry: 2
+  energy_evaluations_per_geometry: 1
+  subprocess_only: false
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). The framework reads this block instead of
+# guessing a keyword: `threads` is what one rank may spread over,
+# `ranks` how many ranks a calculation starts.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+  ranks:
+    keyword: nproc
+    default: 1
+
+profiles:
+  ff_energy:
+    capability: energy
+    method: ff
+    steps:
+    - energy
+  ff_gradient:
+    capability: gradient
+    method: ff
+    steps:
+    - energy
+    - gradient
+  ff_optimize:
+    capability: geometry_optimization
+    method: ff
+    steps:
+    - optimize
+  ff_optimize_cell:
+    capability: geometry_optimization
+    method: ff
+    steps:
+    - optimize
+  ff_nve:
+    capability: classical_dynamics
+    method: ff
+    steps:
+    - md
+  ff_nvt:
+    capability: classical_dynamics
+    method: ff
+    steps:
+    - md
+  ff_npt:
+    capability: classical_dynamics
+    method: ff
+    steps:
+    - md
+  qmmm_field:
+    capability: gradient
+    method: ff
+    steps:
+    - energy
+    - gradient
+  qmmm_energy:
+    capability: gradient
+    method: ff
+    steps:
+    - energy
+    - gradient

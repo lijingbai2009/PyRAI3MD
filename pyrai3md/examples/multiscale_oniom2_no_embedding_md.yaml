@@ -1,0 +1,54 @@
+# Multiscale composite test: ONIOM2 (OpenQP MRSF high + xTB low), embedding=False, read_charge=False, 5-step NAMD
+# Topology: Dispatcher local / Workflow single / Calculator composite (3 tasks)
+# Run: pyrai3md multiscale_oniom2_no_embedding_md.yaml
+#
+# This file belongs to the `multiscale_test` family (pmd_env.yaml). It needs
+# OpenQP and xTB on the host; the family switch is closed by default so a round
+# without those engines does not try to run it.
+
+control:
+  title: multiscale_oniom2_no_embedding_md_example
+  jobtype: md
+  theory: [openqp, xtb]
+  multiscale_type: oniom
+
+atoms: [C, C, H, H, H, H, O, H, H]
+coordinates:
+  - [-1.120191050, 0.000000000, -2.661941306]
+  - [-1.120191050, 0.000000000, -1.331783306]
+  - [-1.120191050, 0.756356668, -3.234891306]
+  - [-1.120191050, -0.756356668, -3.234891306]
+  - [-1.876547718, -0.529606640, -0.758833306]
+  - [-0.363834382, 0.529606640, -0.758833306]
+  - [5.000000000, 5.000000000, 5.000000000]
+  - [5.757200000, 5.000000000, 5.587300000]
+  - [5.000000000, 5.757200000, 5.586500000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: "2 1"
+  spin: "0 1"
+  coupling: "1 2, 2 3, 1 3"
+  highlevel: [1, 2, 3, 4, 5, 6]
+
+md:
+  root: "2"
+  initcond: 0
+  ninitcond: 1
+  sfhp: fssh
+  dosoc: 1
+  activestate: 1
+  nactype: ktdc
+  randvelo: 1
+  temperature: 300
+  step: 5
+  size: 5.0
+
+openqp:
+  method: mrsf
+  basis: sto-3g
+  functional: bhhlyp
+
+xtb:
+  method: gfn2

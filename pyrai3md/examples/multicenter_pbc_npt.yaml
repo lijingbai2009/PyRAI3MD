@@ -1,0 +1,159 @@
+# Multi-center PySCF-in-LAMMPS MD of a 20-water box under a barostat (NPT)
+# Topology: Dispatcher local / Workflow single / Calculator local (ONIOM2)
+# Run: pyrai3md multicenter_pbc_npt.yaml
+#      (from this directory: the h2o.data, h2o.in.init and h2o.in.settings
+#      topology files the LAMMPS layer reads sit beside this input)
+#
+# The variable-cell sibling of multicenter_pbc_nve.yaml, and the reason that
+# one exists. Crossing counts are kept in fractional units, so they are exact
+# for the cell they were accrued under and a deforming box moves the ground
+# under them (dev/methods/PBC_DEVELOPMENT.md section 4.1). A run that never
+# changes its cell cannot show what that costs, which is why this input drives
+# the same two straddling waters with a barostat: the region is re-cut from the
+# cell of each instant, and `region_reconstruction` reads whether the bonds
+# stayed bonds.
+#
+# The subsystem selection is the same mechanism, and so is its box rule. Only
+# the whole-system low-layer task follows the cell: a region task is handed no
+# cell (planning keeps `task_cell` None for it), its `pbc` is zeroed, and the
+# skill then keeps the template's own box instead of resizing it
+# (`input_builder.write_data_file`), because the difference term must not carry
+# a box at all. The pressure source is that same whole-system task:
+# `PyRAIState.active_stress()` reads the stress of the task that owns the
+# geometry (`planning/task.py::resolve_system_task`), the center's motion
+# contributing nothing to it - an approximation this run states rather than
+# hides, since a center's own virial is never asked for (see the stress note in
+# dev/methods/PBC_DEVELOPMENT.md section 7).
+#
+# Measured on this input as shipped (50 steps): the cell does move - a goes
+# from 8.399091 to 8.426207 A (V 592.51 to 598.27 A^3, +0.97%), and the region
+# is re-cut from the cell of each of the 6 recorded frames with `debug` on, so
+# `region_reconstruction` ran against a deforming box at two centers and found
+# nothing. What it does NOT do is receive a virial: the task list carries
+# capabilities ['energy','gradient'] on every LAMMPS task and 'stress' only on
+# the PySCF center tasks, the L(real) baseline's `stress` flag is False, and the
+# run's ensemble record reads Pvir_bar = 0.000000 with all of the pressure in
+# Pint_bar (3773.40 bar at the first recorded step). The box therefore expands
+# on the kinetic term alone. That routing is a planning defect this example
+# exposes rather than introduces (it predates the subsystem selection), it is
+# recorded in dev/TODO.md, and no number in this file claims a virial is
+# present.
+#
+# barostat_tau 1000 fs is what the shipped LAMMPS NPT examples of this kind use
+# (md_lammps_npt_nhc_berendsen.yaml); 50 steps of 1 fs is enough to move the box
+# measurably, which is what is being read out here, and the run stays a minute.
+
+control:
+  title: multicenter_pbc_npt_example
+  jobtype: md
+  theory: [pyscf, lammps]
+  gl_seed: 20261008
+
+  # Test switch: a frame whose center cannot be reconnected stops the run
+  # instead of only reporting the reading.
+  debug: true
+
+atoms: [O, H, H, O, H, H, O, H, H, O, H, H,
+       O, H, H, O, H, H, O, H, H, O, H, H,
+       O, H, H, O, H, H, O, H, H, O, H, H,
+       O, H, H, O, H, H, O, H, H, O, H, H,
+       O, H, H, O, H, H, O, H, H, O, H, H]
+
+coordinates:
+  - [0.3668257, 4.0129757, 7.0641557]
+  - [0.9226557, 3.5287357, 6.4161057]
+  - [0.4863957, 3.5033657, 7.9197357]
+  - [7.3558057, 7.2037657, 2.0256657]
+  - [6.5043457, 7.0894457, 1.6087457]
+  - [8.0162757, 7.4907457, 1.3823057]
+  - [7.7145457, 2.9177957, 2.4874957]
+  - [8.3673757, 2.3435657, 2.0596757]
+  - [7.2107557, 3.3171857, 1.6872757]
+  - [6.2773257, 4.3503357, 0.6037157]
+  - [5.3413157, 4.5006357, 0.9374457]
+  - [6.2968057, 4.9656057, 8.2203757]
+  - [0.2872357, 7.9376357, 7.9685557]
+  - [1.0588757, 7.3735957, 8.1059477]
+  - [0.2130057, 7.7345257, 6.9813457]
+  - [4.1939257, 7.0073657, 5.8359957]
+  - [4.9706557, 6.9508957, 6.2776857]
+  - [3.5205757, 6.8245957, 6.5554257]
+  - [4.6733357, 7.5824457, 1.9361957]
+  - [4.1580957, 7.0971057, 2.5679757]
+  - [5.0339557, 8.3078257, 2.4855357]
+  - [0.2421057, 5.4051457, 3.5010657]
+  - [7.9403257, 5.9730357, 3.1010457]
+  - [8.3487957, 4.4870657, 3.2758557]
+  - [6.8288857, 5.7827757, 7.1076057]
+  - [7.3423257, 6.4620557, 6.5394957]
+  - [7.5442257, 5.1429957, 7.1983057]
+  - [3.1385057, 5.2486257, 3.4742657]
+  - [2.2204357, 5.1507257, 3.7190157]
+  - [3.6784457, 4.9128557, 4.2004457]
+  - [2.8095157, 0.2089857, 4.3912157]
+  - [3.3913957, 8.0781857, 5.0244757]
+  - [3.2568857, 1.0782657, 4.5389957]
+  - [0.8976857, 7.1710557, 5.4808657]
+  - [0.8428257, 6.3560957, 4.9577457]
+  - [1.5294757, 7.7090957, 4.9966757]
+  - [3.4644757, 1.3321757, 0.2239557]
+  - [3.5747657, 0.4052257, 0.5480657]
+  - [4.2414257, 1.3767657, 8.1363157]
+  - [0.8177857, 1.9425857, 0.4831357]
+  - [1.8355257, 1.8800157, 0.3538057]
+  - [0.5460657, 1.0307457, 0.2078257]
+  - [6.1636157, 1.9685757, 7.2539957]
+  - [6.4047957, 2.6798757, 7.8521157]
+  - [7.0053357, 1.7651557, 6.8620957]
+  - [6.3345457, 0.9054157, 3.4803057]
+  - [7.0259757, 0.2886657, 3.1054157]
+  - [6.7342957, 1.7390757, 3.0981057]
+  - [4.5959457, 1.9990157, 5.0648857]
+  - [5.2720257, 1.5874957, 4.4324657]
+  - [5.1690157, 2.1018157, 5.8623857]
+  - [3.2919957, 6.5817757, 8.2959857]
+  - [3.8041557, 6.9707657, 0.5558957]
+  - [3.1627857, 5.6756757, 0.2782657]
+  - [3.3995757, 4.1425257, 0.9907657]
+  - [3.1311057, 4.3275057, 1.8987957]
+  - [3.3951057, 3.1259157, 0.9308657]
+  - [1.8184657, 2.5670257, 5.4830857]
+  - [1.7210457, 1.6672457, 5.1967157]
+  - [2.8247057, 2.7193557, 5.4937157]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  highlevel: [[10, 11, 12], [22, 23, 24]]
+  pbc: [1, 1, 1]
+  cell: [8.399091, 8.399091, 8.399091, 90.0, 90.0, 90.0]
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 50
+  size: 41.34
+  direct: 1
+  buffer: 10
+  randvelo: 1
+  temperature: 300
+  ensemble: npt
+  thermostat: nose-hoover-chain
+  barostat: berendsen
+  thermostat_tau: 100
+  thermostat_chain: 3
+  pressure: 1.0
+  barostat_tau: 1000
+  compressibility: 4.5e-5
+
+pyscf:
+  method: hf
+  basis: sto-3g
+
+lammps:
+  method: ff
+  lammps_project: h2o
+  ewald_accuracy: 1e-4
+  lammps_shake: 0
+  python_enabled: true

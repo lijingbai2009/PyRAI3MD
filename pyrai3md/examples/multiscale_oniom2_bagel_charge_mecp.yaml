@@ -1,0 +1,65 @@
+# ONIOM point-charge embedding: one water (BAGEL CAS-SCF, two singlet states) embedded in xTB GFN-FF charges on a six-atom cluster, searched toward a minimum-energy crossing point.
+# Topology: Dispatcher local / Workflow iterative / Calculator composite (oniom)
+# Run: pyrai3md multiscale_oniom2_bagel_charge_mecp.yaml
+# Engine-gated (xTB/BAGEL): the local ORCA+PySCF true-embedding carriers are
+# `multiscale_oniom2_orca_embedding_{meci,neb}`.
+
+control:
+  title: multiscale_oniom2_bagel_charge_mecp_example
+  jobtype: optimize
+  theory:
+  - bagel
+  - xtb
+  multiscale_type: oniom
+atoms:
+- O
+- H
+- H
+- O
+- H
+- H
+coordinates:
+- - 1.0
+  - 1.0
+  - 1.0
+- - 2.0
+  - 1.0
+  - 1.0
+- - 1.0
+  - 2.0
+  - 1.0
+- - 5.0
+  - 5.0
+  - 5.0
+- - 6.0
+  - 5.0
+  - 5.0
+- - 5.0
+  - 6.0
+  - 5.0
+molecule:
+  charges: 0
+  multiplicity: 1
+  # BAGEL solves one spin manifold per run, so the crossing pair is two
+  # singlets of the same CAS(2,2) space rather than a singlet/triplet pair.
+  ci: '2'
+  spin: '0'
+  highlevel:
+  - 1
+  - 2
+  - 3
+  embedding: true
+  read_charge: false
+optimize:
+  method: mecp
+  state_i: 0
+  state_j: 1
+  maxit: 2
+bagel:
+  method: casscf
+  basis: sto-3g
+  nact_elec: 2
+  nact_orb: 2
+  nclosed: 4
+xtb:
+  method: gfn_ff

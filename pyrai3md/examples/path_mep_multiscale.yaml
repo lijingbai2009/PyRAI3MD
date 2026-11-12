@@ -1,0 +1,47 @@
+# Minimum energy path over a single-centre multiscale composite
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator composite (3 tasks per evaluation)
+# Run: pyrai3md path_mep_multiscale.yaml
+#
+# The single-centre multiscale arm of the path family. One centre whose model
+# region is the whole system, two layers of the same program
+# (`theory: [pyscf, pyscf]`, the second binding keyed by its role), so the
+# composite reduces to the high layer's surface: the path is the same one the
+# single-layer case walks, evaluated as a sum of layered terms. That is the check
+# this file is for - with the model region covering the whole system, the
+# composite path reproduces the single-layer one.
+#
+# What is out of scope: more than one centre. A path interpolates between
+# structures, and a multi-centre partition has no single structure to
+# interpolate; this round ships no example for it (see
+# dev/methods/PATH_DEVELOPMENT.md section 14).
+#
+# What it needs from the host: PySCF (three tasks per evaluation).
+control:
+  title: path_mep_multiscale
+  jobtype: optimize
+  theory: [pyscf, pyscf]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 5
+  path_radius: 0.15
+  path_inner_maxit: 12
+  path_constraint: sphere
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.174177304, 0.000000000, -0.007583040]
+  - [0.045975463, 0.000000000, 0.002049630]
+  - [-0.044762048, 0.000000000, 1.262686200]
+molecule:
+  charges: 0
+  multiplicity: 1
+  highlevel: [[1, 2, 3]]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

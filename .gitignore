@@ -1,0 +1,29 @@
+# Generated during pip install from harness/pmd_env.yaml
+pyrai3md/pmd_env.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Qualification rounds and scratch trees created in the launch directory
+tmp_*/
+
+# LAMMPS force-field model cache (runtime artifact written beside the
+# calculation directory, so it lands in the launch directory when an
+# example is run in place)
+*.ff.json
+
+# Framework run logs (<title>.log, kernel/logger.RunLogger). A run writes
+# beside its scratch root, so an in-place run leaves the log in the launch
+# directory; these are run artifacts, never sources.
+*.log
+
+# macOS Finder metadata
+.DS_Store
+
+# Microsoft Word documents
+*.docx

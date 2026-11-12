@@ -1,0 +1,66 @@
+# Minimum energy path with a variable cell under an applied pressure
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_cell_mep.yaml
+#
+# A path whose points carry a box as well as atoms: `optimize_cell: true` puts the
+# six relaxed lattice entries into the same vector as the mass-weighted
+# coordinates, driven by the stress conjugate to them, exactly as a
+# single-structure cell relaxation does (`optimizer/base.py`'s cell half is what
+# this run reuses). `opt_pressure` makes the objective the enthalpy `E + pV`, and
+# `opt_cell_coupling` says how many lattice directions one pressure may move.
+#
+# The cell half of a path row is judged in the units a box is judged in - bar and
+# strain - and `path_status.txt` carries the same five cell columns
+# `opt_status.txt` does (`utilities/opt_status.py`'s names), so one reading is
+# spelled one way in both records. `path_profile.txt` gains a `volume` column.
+#
+# What it needs from the host: xtb (GFN-FF, which reports the lattice gradient
+# this walk is stepped on), and a host that has it. Not run on this checkout - no
+# xtb here - so its readings are unmeasured until a qualification round.
+
+control:
+  title: path_cell_mep
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 6
+  path_radius: 0.05
+  path_inner_maxit: 12
+  path_constraint: sphere
+  optimize_cell: true
+  opt_pressure: 1000.0
+  opt_cell_coupling: isotropic
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.330000000]
+  - [0.000000000, 0.920000000, 0.000000000]
+  - [0.000000000, -0.920000000, 0.000000000]
+  - [0.000000000, 0.920000000, 1.330000000]
+  - [0.000000000, -0.920000000, 1.330000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

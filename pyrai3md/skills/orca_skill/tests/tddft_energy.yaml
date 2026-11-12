@@ -1,0 +1,26 @@
+version: 1.0
+name: tddft_energy_test
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  profile: tddft_energy
+  method: tddft
+  functional: pbe0
+  basis: sto-3g
+  tda: true
+  execution_mode: local
+
+expected:
+  energy:
+    shape: [3]

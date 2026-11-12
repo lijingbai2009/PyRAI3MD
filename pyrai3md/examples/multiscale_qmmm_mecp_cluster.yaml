@@ -1,0 +1,82 @@
+# QM/MM crossing search between the two lowest singlet surfaces of one water (Molcas CAS-SCF) in a six-atom water cluster (LAMMPS).
+# Topology: Dispatcher local / Workflow iterative / Calculator composite (qmmm)
+# Run: pyrai3md multiscale_qmmm_mecp_cluster.yaml
+#
+# One spin manifold, not the spin-forbidden pair MECP is named for: the
+# Molcas skill builds a single &RASSCF for a plain energy+gradient pass and
+# reads only the first block of a multi-spin `ci`/`spin` declaration, so a
+# singlet+triplet manifold arrives one surface short and the parser refuses
+# it (measured in the test environment, round tmp_20261031_005246, where the run
+# landed "Happy landing" with one root energy against two declared states).
+
+control:
+  title: multiscale_qmmm_mecp_cluster_example
+  jobtype: optimize
+  theory:
+  - molcas
+  - lammps
+  multiscale_type: qmmm
+atoms:
+- O
+- H
+- H
+- O
+- H
+- H
+coordinates:
+- - 1.0
+  - 1.0
+  - 1.0
+- - 2.0
+  - 1.0
+  - 1.0
+- - 1.0
+  - 2.0
+  - 1.0
+- - 5.0
+  - 5.0
+  - 5.0
+- - 6.0
+  - 5.0
+  - 5.0
+- - 5.0
+  - 6.0
+  - 5.0
+molecule:
+  charges: 0
+  multiplicity: 1
+  # The `qmmm_cluster_test` topology declares a 10 A box, so this run has
+  # to say it is not periodic instead of inheriting the default: an
+  # undeclared case reads as molecular in its log while LAMMPS still loads
+  # the box, which is the split the LAMMPS fixtures are tested against.
+  pbc: [0, 0, 0]
+  ci: '2'
+  spin: '0'
+  highlevel:
+  - 1
+  - 2
+  - 3
+  q_qm:
+  - -0.83
+  - 0.415
+  - 0.415
+  embedding: true
+  read_charge: false
+optimize:
+  method: mecp
+  # The two singlet surfaces the crossing search drives, 0-based.
+  state_i: 0
+  state_j: 1
+  maxit: 2
+molcas:
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 2
+  nocsf: true
+  inactive_orb: 4
+lammps:
+  method: ff
+  lammps_project: qmmm_cluster_test
+  lammps_shake: 0
+  python_enabled: true

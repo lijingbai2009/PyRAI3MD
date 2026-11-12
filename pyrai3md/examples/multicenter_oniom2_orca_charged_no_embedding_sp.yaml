@@ -1,0 +1,43 @@
+# Charged multi-center ONIOM2 control: the ammonium (+1) / water cluster with
+# embedding off.
+# Topology: Dispatcher local / Workflow single / Calculator composite (5 tasks)
+# Run: pyrai3md multicenter_oniom2_orca_charged_no_embedding_sp.yaml
+#
+# Read with `multicenter_oniom2_orca_charged_sp.yaml`: same atoms, same
+# per-center charges, no point charges in either high-level deck.
+
+control:
+  title: multicenter_oniom2_orca_charged_no_embedding_sp_example
+  jobtype: energy gradient
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+
+atoms: [N, H, H, H, H, O, H, H]
+coordinates:
+  - [0.0, 0.0, 0.0]
+  - [0.6, 0.6, 0.6]
+  - [0.6, -0.6, -0.6]
+  - [-0.6, 0.6, -0.6]
+  - [-0.6, -0.6, 0.6]
+  - [5.0, 5.0, 5.0]
+  - [5.7572, 5.0, 5.5873]
+  - [5.0, 5.7572, 5.5865]
+
+molecule:
+  charges: "1; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "1; 1"
+  spin: "0; 0"
+  highlevel: [[1, 2, 3, 4, 5], [6, 7, 8]]
+  embedding: false
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

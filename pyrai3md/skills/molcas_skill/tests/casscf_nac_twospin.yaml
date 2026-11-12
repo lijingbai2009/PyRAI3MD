@@ -1,0 +1,46 @@
+version: 1.0
+name: casscf_nac_twospin_test
+
+# Two nonadiabatic couplings that live in different spin manifolds, declared
+# triplet first. `&ALASKA` is written once per spin group, so the deck prints the
+# singlet block first while the request names the triplet pair first: this is the
+# case that makes the row-to-pair remap in `service/parser/log_parser.py` a live
+# path on the engine, instead of a single-group deck where grouping is identity.
+# The reading it owes: the log's block order, and whether one deck serves two
+# spin groups for a NAC-only request.
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 4
+  state_spin: [0, 0, 2, 2]
+  coupling: [[2, 3], [0, 1]]
+  jobtype: nac
+  profile: casscf_properties
+  method: casscf
+  basis: ano-s-mb
+  # CAS(2,2) holds a single triplet configuration, and the engine says so
+  # outright: the second (triplet) RASSCF pass asked for two roots and died with
+  # `You can't ask for more roots than there are configurations`,
+  # rc=_RC_INPUT_ERROR_ (round tmp_20261102_114641). RAS2=3 gives the triplet
+  # manifold three determinants, so two triplet roots exist and the two
+  # spin-grouped ALASKA blocks are both servable.
+  nact_elec: 2
+  nact_orb: 3
+  inactive_orb: 6
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    tolerance: 1e-6
+  nac:
+    shape: [2, 6, 3]

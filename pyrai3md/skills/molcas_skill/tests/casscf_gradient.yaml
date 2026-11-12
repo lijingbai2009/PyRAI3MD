@@ -1,0 +1,35 @@
+version: 1.0
+name: casscf_gradient_test
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  jobtype: gradient
+  target_states: [0]
+  profile: casscf_properties
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 2
+  inactive_orb: 7
+  # User-selected active orbitals (1-based): orbital 9 stays locked
+  # in the default window [8, 9], orbital 6 is swapped in via ALTEr.
+  active: [6, 9]
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    tolerance: 1e-6
+  gradient:
+    shape: [3, 6, 3]

@@ -1,0 +1,66 @@
+# Constraint example, aperiodic: three hard walls of the three non-spherical geometries in one PySCF run, sized so every hydrogen is past the surface.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_wall_nonsphere.yaml
+#
+# The water sits 0.95734 A from the declared centre on the axis pair 0.75754 /
+# 0.58670, so an ellipsoid with 0.95 semiaxes has it at reduced norm 1.0077, a
+# cuboid of 1.4 A edges has it past the y face (half edge 0.7 against 0.7575),
+# and the same 1.4 as a triclinic cell puts the y fraction at 0.5411 against a
+# face at 0.5. Three different surfaces, three different arithmetic paths.
+#
+# Measured (5 steps): every wall carries a nonzero contribution at every
+# printed step - ellipsoid up to 5.505403e-06, cuboid 2.217332e-05, sheared
+# 3.674277e-05 Ha - so the geometry formulas ran on the engine and not only in
+# a unit test. A periodic cell refuses `wall_law soft`, but these are `hard`
+# walls and no cell is involved.
+# Constraint example for the merged constraint subsystem.
+control:
+  title: constraint_md_wall_nonsphere_example
+  jobtype: md
+  gl_seed: 20260929   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 5
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  # The three non-spherical geometries, one run, sized against the same
+  # water: the hydrogen sits 0.95734 A from the centre on an axis pair of
+  # 0.75754 and 0.58670, so an ellipsoid of 0.95 semiaxes has it at a reduced
+  # norm of 1.0077, a cuboid of 1.4 A edges has it past the y face, and the
+  # same number as a triclinic cell puts its y fraction at 0.5411 against a
+  # face at 0.5. All three therefore carry force, which is what says the
+  # geometry arithmetic ran on the engine rather than only in a unit test.
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  wall_type: [ellipsoid, box, triclinic]
+  wall_ellipsoid_semiaxes: [[0.95, 0.95, 0.95]]
+  wall_box_lengths: [[1.4, 1.4, 1.4]]
+  wall_triclinic_cell: [[1.4, 0.0, 0.0, 0.28, 1.4, 0.0, 0.14, 0.14, 1.4]]
+  wall_atoms: [[1, 2, 3], [1, 2, 3], [1, 2, 3]]
+  wall_center: [[0.0, 0.0, 0.11734], [0.0, 0.0, 0.11734], [0.0, 0.0, 0.11734]]
+  wall_fc: [0.002, 0.002, 0.002]
+  wall_id: [ellipsoid, cuboid, sheared]

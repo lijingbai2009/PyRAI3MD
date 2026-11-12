@@ -1,0 +1,57 @@
+# Constraint example, aperiodic: a torsion across a hydrogen bond, with no cell, is served and held.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_torsion_intermolecular.yaml
+#
+# Two waters, the declared row atoms 2-1-4-5 (H-O ... O-H). With no periodicity
+# there is no image to derive, so the same-component rule does not apply and the
+# torsion is an ordinary condition on four listed atoms: the multi-condition
+# solver takes it.
+#
+# Measured (4 steps, 4 frames): the torsion is held to 1.421e-14 deg, while the
+# undeclared O...O separation across the hydrogen bond moves 6.503e-03 A - the
+# control that shows the projection corrected a real force rather than sitting
+# still. The refused half of that pair (the same declaration inside a cell)
+# is proven offline, in test_constraint_periodic.TestDihedralBranch.
+control:
+  title: constraint_md_torsion_intermolecular_example
+  jobtype: md
+  gl_seed: 20261001   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+  - [2.700000000, 0.000000000, -0.200000000]
+  - [3.100000000, 0.700000000, 0.100000000]
+  - [3.100000000, -0.700000000, -0.600000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 4
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  # H-O ... O-H across a hydrogen bond: no bond joins atom 2 to atom 3, so
+  # this is the same declaration the periodic case makes, without a cell.
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  shake_dihedral: [[2, 1, 4, 5]]
+  shake_tol: 1e-10
+  shake_id: hbond_twist

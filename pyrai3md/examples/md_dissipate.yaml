@@ -1,0 +1,80 @@
+# Dissipation gate: the thermostat starts after the run has settled down.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md md_dissipate.yaml
+#
+# `dissipate 1` propagates the trajectory on NVE while it is still on an
+# excited state, and starts the thermostat once the run has been on the
+# electronic ground state for `thermodelay` steps. The point is that a Nose-
+# Hoover chain coupled during the hop-dominated part of a dynamics run takes
+# away the kinetic energy the hopping probability is made of, and after the
+# fact the two effects cannot be told apart.
+#
+# This input lands on the ground state at the first step (it starts there), so
+# the delay counts from step 1 and the chain takes over on step 4. What to read
+# is title.md.ensemble: on the three gated steps the thermostat columns
+# (T_inst, N_df, scale_pre, scale_post, Q1, xi1, peta1) carry no number at all,
+# and from step 4 they do (T_inst 182.479 K, scale_post 1.000110899316).
+# The instantaneous temperature says nothing on a gated step because nothing
+# happened to the velocities: their Ekin, 0.0064875623414381 Hartree on the
+# first step, is the same number the same structure carries on NVE
+# (md_velocity_excess_base.yaml writes it on its first line), which is what
+# "propagates on NVE" means in digits.
+#
+# The control arm is this file with `dissipate: 0`: then step 1 already reads
+# T_inst 273.172 K and its Ekin is 0.0064881353503439 Hartree, the chain having
+# taken its first half kick.
+#
+# The excited half of the rule - a run that hops down and only then starts
+# losing energy - cannot be timed by a shipped example, because when a real
+# trajectory hops is not something an input can schedule. It is covered by the
+# verification suite instead (qualification/verification/test_md_dissipate.py),
+# which drives the same gate on a state whose active surface the test sets.
+
+control:
+  title: md_dissipate_example
+  jobtype: md
+  gl_seed: 20261008
+  theory: [pyscf]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, -0.000000000, -2.649741092]
+  - [-1.120191050, 0.000000000, -1.343983520]
+  - [-0.472508457, 0.648151398, -3.225344333]
+  - [-1.767873643, -0.648151398, -3.225344333]
+  - [-1.768342448, -0.647682593, -0.768380279]
+  - [-0.472039652, 0.647682593, -0.768380279]
+
+velocities:
+  - [0.000233177, -0.000042299, -0.000208531]
+  - [-0.000217441, 0.000195315, 0.000185800]
+  - [-0.000893166, -0.000054466, 0.000176273]
+  - [0.001361820, -0.000285727, 0.000253295]
+  - [-0.000024165, -0.000666228, 0.000131482]
+  - [-0.000631993, -0.000816868, -0.000290190]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 6
+  size: 20.67
+  ensemble: nvt
+  thermostat: nh
+  thermostat_chain: 1
+  temperature: 300
+  dissipate: 1
+  thermodelay: 3
+  direct: 6
+  buffer: 6

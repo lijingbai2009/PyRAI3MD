@@ -1,0 +1,36 @@
+version: 1.0
+name: casscf_meci_test
+# Same-spin MECI optimization (S1/S2 crossing of C2H4). Since the
+# exact crossing geometry is not readily available, only 5 SLAPAF
+# iterations are requested as a functional test of the generated
+# input (Ediff 2 3 constraint + Rlxroot + Do while loop).
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  profile: casscf_geometry_optimization
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 2
+  inactive_orb: 7
+  opt_state_i: 0
+  opt_state_j: 1
+  opt_maxit: 5
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [3]
+    tolerance: 1e-6

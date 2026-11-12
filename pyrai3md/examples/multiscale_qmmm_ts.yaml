@@ -1,0 +1,78 @@
+# QM/MM saddle search on one water (Molcas CAS-SCF) in a six-atom cluster (LAMMPS); the MM atoms are held by a fix and the curvature is the framework numerical composite Hessian.
+# Topology: Dispatcher local / Workflow iterative / Calculator composite (qmmm)
+# Run: pyrai3md multiscale_qmmm_ts.yaml
+
+control:
+  title: multiscale_qmmm_ts_example
+  jobtype: optimize
+  theory:
+  - molcas
+  - lammps
+  multiscale_type: qmmm
+atoms:
+- O
+- H
+- H
+- O
+- H
+- H
+coordinates:
+- - 1.0
+  - 1.0
+  - 1.0
+- - 2.0
+  - 1.0
+  - 1.0
+- - 1.0
+  - 2.0
+  - 1.0
+- - 5.0
+  - 5.0
+  - 5.0
+- - 6.0
+  - 5.0
+  - 5.0
+- - 5.0
+  - 6.0
+  - 5.0
+molecule:
+  charges: 0
+  multiplicity: 1
+  # The `qmmm_cluster_test` topology declares a 10 A box, so this run has
+  # to say it is not periodic instead of inheriting the default: an
+  # undeclared case reads as molecular in its log while LAMMPS still loads
+  # the box, which is the split the LAMMPS fixtures are tested against.
+  pbc: [0, 0, 0]
+  ci: '1'
+  spin: '0'
+  highlevel:
+  - 1
+  - 2
+  - 3
+  # No q_qm here on purpose. The other three QMMM examples pin it, which
+  # leaves the post-ESPF 0-order charge readback with no shipped case that
+  # runs on it; this one asks for the derived value, so a reader that comes
+  # back empty stops the run instead of carrying on on a hand-written number.
+  embedding: true
+  read_charge: false
+optimize:
+  method: ts
+  maxit: 2
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  fix_atoms: 4-6
+  fix_id: hold_mm
+molcas:
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 2
+  nocsf: true
+  inactive_orb: 4
+lammps:
+  method: ff
+  lammps_project: qmmm_cluster_test
+  lammps_shake: 0
+  python_enabled: true

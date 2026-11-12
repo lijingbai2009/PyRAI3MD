@@ -1,0 +1,71 @@
+version: 1.0
+name: tddft_st_energy_test
+# Two surfaces of different spin from one evaluation: S0, S1, S2 and T1 of the
+# same geometry, answered by TWO CP2K runs of the same reference.
+#
+# Why two runs. One CP2K run solves one spin manifold, and this was measured
+# rather than assumed: an A/B on the test environment took the input this case
+# writes and changed only `RKS_TRIPLETS`. `T` printed one table, headed
+# `R-TDDFPT states of multiplicity 3`, and the word `singlet` appeared zero times
+# in the whole log; `F` printed one table, headed `multiplicity 1`. The engine's
+# own source agrees (`qs_tddfpt2_methods.F:294-297` picks a single `mult` from
+# that one boolean, line 421 calls the solver once, line 1190 prints once), and
+# the only code that solves both manifolds is the spin-orbit branch - a different
+# task, which still returns forces for one manifold only (line 1255). So
+# `RKS_TRIPLETS` chooses the channel instead of adding to it, and the pair of
+# surfaces comes from two runs, stitched by row in `service/parser/`.
+#
+# What this case certifies, in the numbers the A/B printed on the same machine,
+# the same binary and this same input (excitation energies in eV, on top of the
+# shared SCF baseline -13.56482679723119 Ha, which both runs must reproduce):
+#
+#     S1  1.49462     S2  7.15881        (the singlet run, NSTATES 2)
+#     T1 -1.41009                         (the triplet run, NSTATES 1)
+#
+# One number to read with care: T1 sits BELOW the closed-shell reference here.
+# That is what restricted linear response gives for this geometry and basis, and
+# this case certifies that the row lands in the triplet's slot - not that the
+# value is a usable T1 surface.
+#
+# What stays open. Forces across the two manifolds are the reason the split
+# matters, and each run now numbers its own roots the way the engine accepts
+# (`LIST 1 2` for the singlet run, `LIST 1` for the triplet one); whether the
+# triplet run really writes its excited-state force blocks is what
+# `tddft_st_forces.yaml` asks the deployment, and it is the gate for a cp2k `mecp`
+# search. The SCF of the second run is deliberately recomputed, not restarted
+# from the first: that saving is real only if CP2K's own log says it read the
+# wavefunction, and the marker has not been read off a run yet.
+#
+# Ethylene, the molecule the Molcas MECP case follows. No cell relaxation: CP2K
+# carries no stress for a TDDFT run (measured twice, response_solver.F:943), so a
+# crossing that also moves the box is out of reach for this engine.
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  lattice_vector:
+    - [10.0, 0.0, 0.0]
+    - [0.0, 10.0, 0.0]
+    - [0.0, 0.0, 10.0]
+  pbc: [1, 1, 1]
+  charges: 0
+  multiplicity: 1
+  nstate: 4
+  state_spin: [0, 0, 0, 2]
+  target_states: [0, 1, 2, 3]
+  current_state: 1
+  profile: tddft_energy
+  method: tddft
+  functional: pbe0
+  cutoff: 400
+  ref_cutoff: 50
+  execution_mode: local
+
+expected:
+  energy:
+    shape: [4]

@@ -1,0 +1,136 @@
+name: orca
+backend:
+  module: backend
+  class: OrcaBackend
+# Molecular (non-periodic) backend: periodic runs are rejected by the
+# skill validation instead of being silently ignored.
+supports_pbc: false
+units:
+  energy: hartree
+  gradient: hartree/bohr
+roles:
+  qm: OrcaBackend
+  qm2: false
+  mm: false
+capabilities:
+- energy
+- gradient
+- dipole
+- transition_dipole
+- nonadiabatic_coupling
+- soc_coupling
+- geometry_optimization
+- vibrational_frequency
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+# The high-level layer receives an ONIOM environment's 0-order
+# charges: an electrostatically embedded composite recomputes them
+# every evaluation and returns the gradient at those fixed charges,
+# so its recorded Etot is not a constant of the motion (#3.8).
+receives_environment_charges: true
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). The framework reads this block instead of
+# guessing a keyword: `threads` is what one rank may spread over,
+# `ranks` how many ranks a calculation starts.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+  ranks:
+    keyword: nproc
+    default: 1
+
+profiles:
+  dft_energy:
+    capability: energy
+    method: dft
+    steps:
+    - energy
+  dft_gradient:
+    capability: gradient
+    method: dft
+    steps:
+    - energy
+    - gradient
+  dft_dipole:
+    capability: dipole
+    method: dft
+    steps:
+    - energy
+    - dipole
+  dft_opt_min:
+    capability: geometry_optimization
+    method: dft
+    steps:
+    - optimize
+  dft_opt_ts:
+    capability: geometry_optimization
+    method: dft
+    steps:
+    - optimize_ts
+  dft_frequency:
+    capability: vibrational_frequency
+    method: dft
+    steps:
+    - energy
+    - gradient
+    - hessian
+  tddft_energy:
+    capability: energy
+    method: tddft
+    steps:
+    - energy
+    - tddft
+  tddft_gradient:
+    capability: gradient
+    method: tddft
+    steps:
+    - energy
+    - tddft
+    - gradient
+  tddft_transition_dipole:
+    capability: transition_dipole
+    method: tddft
+    steps:
+    - energy
+    - tddft
+    - transition_dipole
+  tddft_nac:
+    capability: nonadiabatic_coupling
+    method: tddft
+    steps:
+    - energy
+    - tddft
+    - nac
+  tddft_soc:
+    capability: soc_coupling
+    method: tddft
+    steps:
+    - energy
+    - tddft
+    - soc
+  tddft_opt_min:
+    capability: geometry_optimization
+    method: tddft
+    steps:
+    - tddft
+    - optimize
+  tddft_opt_ts:
+    capability: geometry_optimization
+    method: tddft
+    steps:
+    - tddft
+    - optimize_ts
+  tddft_frequency:
+    capability: vibrational_frequency
+    method: tddft
+    steps:
+    - energy
+    - tddft
+    - hessian

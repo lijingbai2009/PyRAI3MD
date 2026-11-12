@@ -1,0 +1,34 @@
+version: 1.0
+name: casscf_frequency_test
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 1
+  state_spin: [0]
+  profile: casscf_frequency
+  method: casscf
+  basis: cc-pvdz
+  nact_elec: 2
+  nact_orb: 2
+  nclosed: 7
+  active: [8, 9]
+  execution_mode: local
+
+expected:
+  frequencies:
+    value: null
+    shape: [12]    # 3N-6 = 12 for C2H4
+    tolerance: 1e-6
+  hessian:
+    value: null
+    shape: [18, 18]
+    tolerance: 1e-6

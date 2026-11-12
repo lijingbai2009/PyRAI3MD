@@ -1,0 +1,29 @@
+# Field twin of xmscaspt2_espf_energy.yaml: the same two external point charges
+# expressed as V/E at each nucleus (atomic units).
+version: 1.0
+name: xmscaspt2_espf_energy_field_test
+input:
+  atoms: [O, H, H]
+  coordinates:
+  - [0.0, 0.0, 0.1173]
+  - [0.0, 0.7572, -0.4692]
+  - [0.0, -0.7572, -0.4692]
+  charges: 0
+  multiplicity: 1
+  nstate: 2
+  state_spin: [0, 0]
+  jobtype: energy
+  profile: caspt2_properties
+  method: caspt2
+  basis: ano-l-vdzp
+  nact_elec: 6
+  nact_orb: 5
+  inactive_orb: 2
+  caspt2_type: xms
+  execution_mode: local
+  external_potential:
+  - [0.0049685335, 0.0, 0.0, -0.0224393043]
+  - [-0.0193561828, 0.0, -0.0009277571, -0.0221878616]
+  - [-0.0193561828, 0.0, 0.0009277571, -0.0221878616]
+expected:
+  energy: {value: null, tolerance: 1.0e-06}

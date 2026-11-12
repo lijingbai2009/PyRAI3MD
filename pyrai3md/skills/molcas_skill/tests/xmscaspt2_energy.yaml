@@ -1,0 +1,36 @@
+version: 1.0
+name: xmscaspt2_energy_test
+input:
+  atoms:
+  - O
+  - H
+  - H
+  coordinates:
+  - - 0.0
+    - 0.0
+    - 0.1173
+  - - 0.0
+    - 0.7572
+    - -0.4692
+  - - 0.0
+    - -0.7572
+    - -0.4692
+  charges: 0
+  multiplicity: 1
+  nstate: 2
+  state_spin:
+  - 0
+  - 0
+  jobtype: energy
+  profile: caspt2_properties
+  method: caspt2
+  basis: ano-l-vdzp
+  nact_elec: 6
+  nact_orb: 5
+  inactive_orb: 2
+  caspt2_type: xms
+  execution_mode: local
+expected:
+  energy:
+    value: null
+    tolerance: 1.0e-06

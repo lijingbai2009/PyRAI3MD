@@ -1,0 +1,56 @@
+# Intrinsic reaction coordinate whose mode is read from a file
+# Topology: Dispatcher local / Workflow iterative / Calculator local
+# Run: pyrai3md path_irc_mode.yaml
+#
+# The same saddle as path_irc.yaml, with `irc_mode: molden`: instead of paying
+# for the Hessian, the imaginary mode is read from a vibration file the run
+# names. The shipped `path_irc.freq.molden` is that saddle's own Hessian written
+# by the framework, so this run and the `irc_mode: hessian` arm of path_irc.yaml
+# are the same calculation reached two ways, and one can be checked against the
+# other.
+#
+# The reader returns frequencies signed, with a negative value for an imaginary
+# mode. That is the contract an IRC needs, and until this round the molden
+# reader took the absolute value while the framework's own writer wrote the
+# sign: the two halves of one file disagreed about the same mode, and no file
+# could seed a walk. The sign now survives the reader and the only consumer that
+# wants a magnitude (`sample_initial_conditions`, which has no thermal
+# distribution for an imaginary mode) takes it itself.
+#
+# The atom order in the file is checked against the system's: a mode read
+# against another order is another displacement, so a mismatch is refused by
+# name rather than applied.
+#
+# What it needs from the host: PySCF (the walk only; no curvature job).
+
+control:
+  title: path_irc_mode
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: irc
+  maxit: 6
+  irc_direction: forward
+  irc_mode: molden
+  irc_mode_file: path_irc.freq.molden
+  path_radius: 0.15
+  path_inner_maxit: 12
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.150009101, 0.000000000, 0.304989560]
+  - [0.020988521, 0.000000000, 0.038392731]
+  - [-0.021596509, 0.000000000, 1.209028017]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

@@ -1,0 +1,73 @@
+# Variable-cell band placed by the geodesic, with the anisotropic coupling
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_cell_neb_geodesic.yaml
+#
+# Two combinations that no other case carries, in one file:
+#
+# 1. `neb_interpolate: geodesic` on a variable-cell band. Every image has its
+#    own box; the geodesic smooths the nuclear path with each image's own cell
+#    and the workflow interpolates the lattice linearly between the endpoints
+#    (the stated trade of the port: the metric is not cell-aware, so the box
+#    ramp is linear). `path_cell_cineb` walks the same box with a linear guess.
+# 2. `opt_cell_coupling: anisotropic`. Every shipped cell path example declares
+#    `isotropic`; with six components the box may change shape as well as size,
+#    and the stress conjugate of each of the six is stepped on its own. The
+#    lattice the geodesic lands on and the one the run relaxes from are then not
+#    constrained to stay cubic, which is what the keyword means.
+#
+# Functional test: `maxit` is the budget, not a convergence claim.
+#
+# What it needs from the host: xtb (GFN-FF).
+
+control:
+  title: path_cell_neb_geodesic
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_pbc_reactant.xyz
+  neb_product: path_pbc_product.xyz
+  neb_images: 3
+  neb_interpolate: geodesic
+  neb_geodesic_threshold: 3.0
+  neb_geodesic_scaler: 1.7
+  neb_geodesic_min_neighbors: 4
+  neb_spring: 0.2
+  neb_step: 0.1
+  optimize_cell: true
+  opt_pressure: 1000.0
+  opt_cell_coupling: anisotropic
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.330000000]
+  - [0.000000000, 0.920000000, 0.000000000]
+  - [0.000000000, -0.920000000, 0.000000000]
+  - [0.000000000, 0.920000000, 1.330000000]
+  - [0.000000000, -0.920000000, 1.330000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

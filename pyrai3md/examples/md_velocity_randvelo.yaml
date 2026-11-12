@@ -1,0 +1,62 @@
+# Initial-velocity control: draw the starting velocities from a temperature.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md md_velocity_randvelo.yaml
+#
+# `randvelo` is the temperature-only start: it draws each Cartesian velocity
+# component as a Gaussian of width sqrt(k_B T / m), so the mean kinetic energy
+# per component is k_B T / 2 and the first recorded Ekin reads the declared
+# temperature back. It needs no normal modes, which is what separates it from
+# `initcond: wigner` and `initcond: boltzmann` -- those two read the frequency
+# record `<title>.freq.<format>` beside the input, and a force-field box or a
+# molecule nobody has optimized has no such file.
+#
+# This input declares no `velocities` block on purpose: the draw is the only
+# source of the initial motion. The center-of-mass drift of the draw is removed
+# (mass-weighted, kinetic energy preserved), so the box does not fly; the
+# components the run freezes are never drawn.
+#
+# What to read: title.md.energies, first line. The expected kinetic energy of a
+# 300 K start on 6 atoms, after the drift removal takes three degrees away, is
+# (3*6-3)/2 k_B T = 7.1e-3 Hartree. One draw is not the expectation: it is a
+# chi-square sample on 15 degrees of freedom, whose own spread is sqrt(2/15) =
+# 36 per cent, and this seed (20261008) gives 5.884e-3 Hartree, 0.5 of that
+# spread below the mean. Judging that the draw returns the declared temperature
+# is a many-sample statement, and it is made in the verification suite
+# (qualification/verification/test_md_velocity_control.py), not against one
+# trajectory. `control.gl_seed` fixes the draw; the same seed twice gives the
+# same trajectory.
+
+control:
+  title: md_velocity_randvelo_example
+  jobtype: md
+  gl_seed: 20261008
+  theory: [pyscf]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, -0.000000000, -2.649741092]
+  - [-1.120191050, 0.000000000, -1.343983520]
+  - [-0.472508457, 0.648151398, -3.225344333]
+  - [-1.767873643, -0.648151398, -3.225344333]
+  - [-1.768342448, -0.647682593, -0.768380279]
+  - [-0.472039652, 0.647682593, -0.768380279]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 3
+  size: 20.67
+  temperature: 300
+  randvelo: 1

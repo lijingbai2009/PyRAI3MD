@@ -1,0 +1,56 @@
+# Nudged elastic band with a held bond length
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb_bond.yaml
+#
+# The band arm of path_mep_bond.yaml: an interior image is interpolated, so it
+# satisfies no condition on its own, and the band lands every interior image on
+# the declared manifold before it dispatches them (and again after every FIRE
+# step, so the frames it prints are the geometries the next round evaluates).
+# The band force is read through the same split, and the endpoints are left
+# exactly as given - a condition they violate is the input's inconsistency, not
+# a product endpoint that quietly moved.
+#
+# The two endpoint files carry the *same* C-N length, which is what makes the
+# boundary and the manifold agree: measured on this checkout, every one of the
+# band's written frames holds C-N to 2.2e-16 A of the anchor.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_neb_bond
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_bond_reactant.xyz
+  neb_product: path_bond_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [0.000000000, 0.000000000, 1.055827000]
+  - [0.000000000, 0.000000000, -0.010776000]
+  - [0.000000000, 0.000000000, -1.145051000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_length: angstrom
+  shake_bond: [[2, 3]]
+  shake_tol: [1e-10]
+  shake_id: [cn]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

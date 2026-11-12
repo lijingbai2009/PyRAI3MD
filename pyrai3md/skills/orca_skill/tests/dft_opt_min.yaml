@@ -1,0 +1,30 @@
+version: 1.0
+name: dft_opt_min_test
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 1
+  state_spin: [0]
+  target_states: [0]
+  profile: dft_opt_min
+  method: dft
+  functional: pbe0
+  basis: sto-3g
+  opt_maxit: 500
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    tolerance: 1e-6
+  fin_coord:
+    shape: [6, 3]

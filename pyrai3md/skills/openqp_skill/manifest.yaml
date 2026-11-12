@@ -1,0 +1,274 @@
+name: openqp
+backend:
+  module: backend
+  class: OpenQPBackend
+# Molecular (non-periodic) backend: periodic runs are rejected by the
+# skill validation instead of being silently ignored.
+supports_pbc: false
+units:
+  energy: hartree
+  gradient: hartree/bohr
+roles:
+  qm: OpenQPBackend
+  qm2: false
+  mm: false
+capabilities:
+- energy
+- gradient
+- nonadiabatic_coupling
+- soc_coupling
+- geometry_optimization
+- nonadiabatic_dynamics
+- vibrational_frequency
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+control_parameters:
+  method:
+    type: str
+    default: tddft
+  basis:
+    type: str
+    default: 6-31g*
+  functional:
+    type: str
+    default: bhhlyp
+  td_type:
+    type: str
+    default: tda
+  nac_type:
+    type: str
+    default: ktdc
+  nac_dt:
+    type: float
+    default: 20.67
+  nac_dx:
+    type: float
+    default: 0.0001
+  nac_bp:
+    type: bool
+    default: true
+  dosoc:
+    type: int
+    default: 0
+  soc_2e:
+    type: int
+    default: 1
+  nstate_s:
+    type: int
+    default: 0
+  nstate_t:
+    type: int
+    default: 0
+  scf_maxit:
+    type: int
+    default: 100
+  scf_converge:
+    type: float
+    default: 1e-6
+  td_maxit:
+    type: int
+    default: 50
+  td_converge:
+    type: float
+    default: 1e-6
+  opt_maxit:
+    type: int
+    default: 100
+  use_mpi:
+    type: bool
+    default: false
+  openqp_nproc:
+    type: int
+    default: 1
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). The framework reads this block instead of
+# guessing a keyword: `threads` is what one rank may spread over,
+# `ranks` how many ranks a calculation starts.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+  ranks:
+    keyword: openqp_nproc
+    default: 1
+
+profiles:
+  hf_energy:
+    capability: energy
+    method: hf
+    runtype: energy
+    sections:
+    - input
+    - guess
+    - scf
+    - properties
+  hf_gradient:
+    capability: gradient
+    method: hf
+    runtype: grad
+    sections:
+    - input
+    - guess
+    - scf
+    - properties
+  hf_geometry_optimization:
+    capability: geometry_optimization
+    method: hf
+    runtype: optimize
+    sections:
+    - input
+    - guess
+    - scf
+    - properties
+    - optimize
+  hf_frequency:
+    capability: vibrational_frequency
+    method: hf
+    runtype: hess
+    sections:
+    - input
+    - guess
+    - scf
+    - properties
+    - hess
+  tddft_energy:
+    capability: energy
+    method: tddft
+    runtype: energy
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  tddft_gradient:
+    capability: gradient
+    method: tddft
+    runtype: grad
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  tddft_geometry_optimization:
+    capability: geometry_optimization
+    method: tddft
+    runtype: optimize
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+    - optimize
+  tddft_nonadiabatic_dynamics:
+    capability: nonadiabatic_dynamics
+    method: tddft
+    runtype: data
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  tddft_frequency:
+    capability: vibrational_frequency
+    method: tddft
+    runtype: hess
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+    - hess
+  mrsf_energy:
+    capability: energy
+    method: mrsf
+    runtype: energy
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  mrsf_gradient:
+    capability: gradient
+    method: mrsf
+    runtype: grad
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  mrsf_nac:
+    capability: nonadiabatic_coupling
+    method: mrsf
+    runtype: nac
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+    - nac
+  mrsf_soc:
+    capability: soc_coupling
+    method: mrsf
+    runtype: soc
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  mrsf_soc_gradient:
+    capability: soc_coupling
+    method: mrsf
+    runtype: data
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  mrsf_geometry_optimization:
+    capability: geometry_optimization
+    method: mrsf
+    runtype: optimize
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+    - optimize
+  mrsf_nonadiabatic_dynamics:
+    capability: nonadiabatic_dynamics
+    method: mrsf
+    runtype: data
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+  mrsf_frequency:
+    capability: vibrational_frequency
+    method: mrsf
+    runtype: hess
+    sections:
+    - input
+    - guess
+    - scf
+    - tdhf
+    - properties
+    - hess

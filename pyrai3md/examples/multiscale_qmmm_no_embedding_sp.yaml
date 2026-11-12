@@ -1,0 +1,52 @@
+# Multiscale composite test: QMMM (Molcas XMS-CASPT2 high + LAMMPS low, periodic water box), embedding=False, energy + gradient + SOC
+# Topology: Dispatcher local / Workflow single / Calculator composite (2 tasks)
+# Run: pyrai3md multiscale_qmmm_no_embedding_sp.yaml
+#
+# This file belongs to the `multiscale_test` family (pmd_env.yaml). It needs
+# Molcas and LAMMPS on the host; the family switch is closed by default so a round
+# without those engines does not try to run it.
+
+control:
+  title: multiscale_qmmm_no_embedding_sp_example
+  jobtype: energy gradient soc
+  theory: [molcas, lammps]
+  multiscale_type: qmmm
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.000000000, 1.000000000, 1.000000000]
+  - [2.000000000, 1.000000000, 1.000000000]
+  - [1.000000000, 2.000000000, 1.000000000]
+  - [5.000000000, 5.000000000, 5.000000000]
+  - [6.000000000, 5.000000000, 5.000000000]
+  - [5.000000000, 6.000000000, 5.000000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  # The `qmmm_cluster_test` topology declares a 10 A box, so this run has
+  # to say it is not periodic instead of inheriting the default: an
+  # undeclared case reads as molecular in its log while LAMMPS still loads
+  # the box, which is the split the LAMMPS fixtures are tested against.
+  pbc: [0, 0, 0]
+  ci: "2 1"
+  spin: "0 1"
+  coupling: "1 2, 2 3, 1 3"
+  highlevel: [1, 2, 3]
+  q_qm: [-0.83, 0.415, 0.415]
+
+molcas:
+  method: caspt2
+  basis: ano-l-vdzp
+  nact_elec: 6
+  nact_orb: 5
+  inactive_orb: 2
+  caspt2_type: xms
+  caspt2_ipea_shift: 0.0
+  nocsf: true
+
+lammps:
+  method: ff
+  lammps_project: qmmm_cluster_test
+  lammps_shake: 0
+  python_enabled: true

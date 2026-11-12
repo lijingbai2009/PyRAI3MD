@@ -1,0 +1,66 @@
+# Relaxing a molecule with a fragment held rigid (partial minima)
+# Topology: Dispatcher local / Workflow iterative / Calculator local
+# Run: pyrai3md optimize_partial_minima.yaml
+#
+# What this example is for. "Optimize only some atoms" is not a second keyword in
+# this framework: it is the `fix` constraint of `&system_constraint`, which takes
+# components out of the active set and restores their anchor. A relaxation with a
+# pinned fragment is therefore declared exactly the way a dynamics run declares
+# it, and what this file measures is that the optimizer treats it as one quantity:
+# the step, the recorded gradient the curvature update is fitted to, and the trust
+# radius all read the tangential part the convergence criteria already judge on.
+#
+# Why HCN with the C-N fragment pinned. Three atoms keep every evaluation an SCF
+# of a few seconds while pinning two of them, so the movable set is one atom.
+# Measured on this input (HF/sto-3g): converged in **27** evaluations at
+# -91.64240 Hartree; the same file with the constraint block removed converges in
+# **23** at -91.64468 - the 0.0023 Hartree difference is the pinned C-N distance
+# held at its 1.200 A start instead of relaxing to its own minimum, which is the
+# physics the constraint asked for rather than a cost of it. Before #337 this run
+# did not converge at all: 101 evaluations left `max_g 6.2e-2` on the free atom
+# (and `dev/TODO.md` has the numbers), because the curvature update was being
+# fitted to a gradient difference that included the force the constraint supplies.
+#
+# Why whole atoms and not one component. Pinning a single Cartesian axis of a
+# molecule in vacuum pins a laboratory direction the molecule has no reason to
+# respect: turn the input and the constraint means something else, and the torque
+# left behind has no free coordinate to be removed along. A relaxation can still
+# be asked to find that point - `test_constraint_optimization.py` covers the
+# component-level spelling - but a curvature-following search refuses it
+# (`optimize_ts.yaml` and section 15.2 of `dev/methods/OPTIMIZE_DEVELOPMENT.md`).
+
+control:
+  title: optimize_partial_minima_example
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: minima
+  maxit: 60
+
+atoms: [H, C, N]
+coordinates:
+  - [1.350000000, 0.000000000, 0.500000000]
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.200000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  # `fix_dir xyz` is deliberately not spelled out: the model's default already
+  # says every component of the named atoms, and `write_constraint_section`
+  # omits a parameter line whose records all hold the default (a line printing
+  # values the run would apply anyway is noise between the reader and the file).
+  # Spelling it here would make the classic carrier look like it dropped a
+  # keyword, which is exactly what the shipped-example guard in
+  # `test_constraint_integration.py` watches for.
+  fix_atoms: 2-3
+  fix_id: cn
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

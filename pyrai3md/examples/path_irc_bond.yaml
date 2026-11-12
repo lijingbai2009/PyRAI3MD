@@ -1,0 +1,58 @@
+# Intrinsic reaction coordinate with a held bond length
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_irc_bond.yaml
+#
+# path_irc.yaml with a declared strict condition: the C-N length is held at its
+# anchor for the whole walk. The walker reuses the framework's position solve
+# (`constraints/runtime.constrain_state`, called by the workflow after every
+# probe) and its tangential split (`constraint_split`, read at the evaluation),
+# so the criteria are judged on the gradient the held bond cannot absorb and the
+# sphere's bookkeeping follows the geometry the backend actually evaluated.
+#
+# The seed is the saddle, and the mode is the framework's own curvature on it
+# (`irc_mode: hessian`), so this case walks the same two arms as path_irc.yaml
+# with one more thing held. What to read: `path_geom.xyz` - every frame's C-N is
+# the first frame's, to the solve's tolerance.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_irc_bond
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: irc
+  irc_direction: forward
+  irc_mode: hessian
+  maxit: 5
+  path_radius: 0.15
+  path_inner_maxit: 12
+  path_constraint: sphere
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+hessian:
+  hess_step: 0.01
+
+atoms: [H, C, N]
+coordinates:
+  - [1.150009101, 0.000000000, 0.304989560]
+  - [0.020988521, 0.000000000, 0.038392731]
+  - [-0.021596509, 0.000000000, 1.209028017]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_length: angstrom
+  shake_bond: [[2, 3]]
+  shake_tol: [1e-10]
+  shake_id: [cn]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

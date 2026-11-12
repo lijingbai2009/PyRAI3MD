@@ -1,0 +1,50 @@
+version: 1.0
+name: mrsf_nonadiabatic_dynamics_soc_test
+
+# One NAMD step under &md dosoc: the framework planner turns the dosoc flag
+# into the soc capability, the skill resolves it to a two-manifold
+# runtype=data run, and the step comes back with per-state energies,
+# per-state gradients and the singlet-triplet couplings the surface-hopping
+# integrator needs in the same call.
+#
+# This is what a dynamics run asks for at every step, so grad_s / grad_t are
+# not written here: with no explicit ladder list the builder derives them
+# from the states this step follows (target_states, refreshed per step when
+# &md activestate is on).
+#
+# A NAC vector cannot join a spin-orbit run (validate refuses it, quoting
+# OpenQP's own reason), so nactype stays out of this case.
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 4
+  state_spin: [0, 0, 2, 2]
+  coupling: [[0, 1], [0, 2], [1, 3]]
+  profile: mrsf_nonadiabatic_dynamics
+  method: mrsf
+  basis: sto-3g
+  functional: bhhlyp
+  dosoc: 1
+  target_states: [0, 3]
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [4]
+    tolerance: 1e-6
+  gradient:
+    value: null
+    shape: [4, 6, 3]
+    tolerance: 1e-6
+  soc:
+    shape: [2]

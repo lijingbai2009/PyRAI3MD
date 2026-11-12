@@ -1,0 +1,62 @@
+# Nudged elastic band in a periodic cell, on a force field
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_neb_xtb.yaml
+#
+# The periodic arm of the band: the two endpoint files declare a cell in their
+# extended-XYZ comment line (`Lattice="..."`, the key `records.lattice_comment`
+# writes and a band's reader parses back), every pair of the band's distances is
+# taken in the nearest periodic image, and each image is wrapped into its box
+# with the crossing count of the same step beside it. It is the same band as
+# path_neb.yaml on a force field instead of an electronic structure.
+#
+# The endpoints here are an ethylene molecule in a 10 A box in two orientations,
+# relaxed with GFN-FF; the cell is large enough that no pair crosses the cell
+# boundary at the equilibrium geometry, which is what makes the minimum-image
+# convention a no-op at the endpoints and a real question between them.
+#
+# What it needs from the host: xtb (GFN-FF). Not run on this checkout - there is
+# no xtb on the test environment - so the readings this case would carry are unmeasured;
+# the qualification round in the test environment is what fills them in.
+
+control:
+  title: path_neb_xtb
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 4
+  neb_reactant: path_pbc_reactant.xyz
+  neb_product: path_pbc_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.000000000]
+  - [0.000000000, 0.000000000, 1.330000000]
+  - [0.000000000, 0.920000000, 0.000000000]
+  - [0.000000000, -0.920000000, 0.000000000]
+  - [0.000000000, 0.920000000, 1.330000000]
+  - [0.000000000, -0.920000000, 1.330000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

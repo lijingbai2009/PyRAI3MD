@@ -1,0 +1,41 @@
+# ONIOM2 control: the same ORCA/PySCF two-water cluster with embedding off.
+# Topology: Dispatcher local / Workflow single / Calculator composite (3 tasks)
+# Run: pyrai3md multiscale_oniom2_orca_no_embedding_sp.yaml
+#
+# Read with `multiscale_oniom2_orca_embedding_sp.yaml`: the high-level deck
+# written here carries no point charges, and the total energy differs from
+# the embedded run by the field interaction (docs ONIOM section 8).
+
+control:
+  title: multiscale_oniom2_orca_no_embedding_sp_example
+  jobtype: energy gradient
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.0, 1.0, 1.0]
+  - [2.0, 1.0, 1.0]
+  - [1.0, 2.0, 1.0]
+  - [5.0, 5.0, 5.0]
+  - [6.0, 5.0, 5.0]
+  - [5.0, 6.0, 5.0]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [0, 0, 0]
+  ci: [1]
+  spin: [0]
+  highlevel: [1, 2, 3]
+  embedding: false
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

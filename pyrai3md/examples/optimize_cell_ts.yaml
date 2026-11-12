@@ -1,0 +1,82 @@
+# A saddle in a relaxable box, with the curvature taken from the framework's
+# own finite differences: the acceptance vehicle for the strain half of the
+# numerical batch.
+#
+# Run: pyrai3md optimize_cell_ts.yaml
+# Engine: xtb GFN-FF, the ethylene box `optimize_cell_xtb.yaml` uses (6 atoms,
+# 10 A cube). Cheap enough that a batch costs seconds, which is the whole
+# reason this case is xtb and not cp2k: the numerical Hessian of a variable-cell
+# run is 3N displaced gradients *plus twelve strained evaluations*, and on a
+# quantum engine the second half is the part that has to be paid for.
+#
+# What this case has to show, all of it read off its own products:
+#
+#   1. the curvature batch asked for the lattice. `workflow/hessian.py`
+#      `_cell_batch` adds the six slots times +/- for a run that declares
+#      `optimize_cell`, holding the fractional coordinates so the atoms ride the
+#      box exactly as the optimizer's step does; the cell rows of
+#      `opt_status.txt` are the visible trace that the search had a box to
+#      follow at all, and the batch's existence is what puts non-zero curvature
+#      into the six lattice entries instead of the zero-fill it would otherwise
+#      carry (#365 refused that shortcut by name);
+#   2. `Negative Modes (model)` reports one imaginary direction: a saddle search
+#      that lost the lattice half of its curvature model would be following
+#      nothing, and a run that never got a matrix says so as a missing row;
+#   3. the volume moves. This is a mechanism reading, not a converged saddle:
+#      `maxit` is a ceiling, and `_check_cell_optimization` judges the columns
+#      and the movement, not convergence.
+#
+# The engine-side stress route of `optimize_cell` is the framework's own (this
+# is `driver: main`); `hess_driver: skill` is the other half of the same search
+# and is refused here on purpose - xtb declares no Hessian profile, so asking
+# the backend for the matrix would fail at the dispatched job by name.
+control:
+  title: optimize_cell_ts_example
+  jobtype: optimize
+  theory: [xtb]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, 0.000000000, -2.661941306]
+  - [-1.120191050, 0.000000000, -1.331783306]
+  - [-1.120191050, 0.923341000, -3.234891306]
+  - [-1.120191050, -0.923341000, -3.234891306]
+  - [-2.043532050, 0.000000000, -0.758833306]
+  - [-0.196850050, 0.000000000, -0.758833306]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  cell: [10.0, 10.0, 10.0, 90.0, 90.0, 90.0]
+
+optimize:
+  method: ts
+  maxit: 6
+  # The atomic four and the cell pair, stated for a 6-atom force-field box on a
+  # quantum engine rather than inherited from the electronic-structure defaults:
+  # the same numbers `optimize_cell_xtb.yaml` runs with, so the two cases differ
+  # by the search and not by the criteria.
+  opt_energy: 1.0e-4
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+  optimize_cell: true
+
+hessian:
+  # `main` is the default and is written out because the point of this case is
+  # who produces the curvature: the framework differences 3N displaced gradients
+  # and twelve strained lattice evaluations, on the assembled energy.
+  hess_driver: main
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

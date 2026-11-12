@@ -1,0 +1,109 @@
+# Adaptive training-data quality gate: the NN surface is labelled by PySCF on the host, with no scheduler in between.
+# Topology: Dispatcher local / Workflow adaptive (iterative, local pools) / Calculator local
+# Run: pyrai3md adaptive_quality_gate_local.yaml
+#
+# The 100-frame fixture is the shipped ethylene set with every reference
+# energy deviation halved about the per-state median (MAD 0.00770/0.01001
+# Ha becomes 0.00385/0.00500 Ha). The round's five new QM labels then lie
+# outside that narrowed band: the gate removes the worst one, the refit
+# lowers the validation energy MAE from 0.00862553 to 0.00777373 eV, and
+# maxmae 0.0082 eV passes it, so iteration 2 runs MD on
+# NN-<title>-iter-2-r1. A second removal was measured to raise the MAE to
+# 0.00784605 eV, which the gate would reject and restore.
+# Measured on 2026-11-12, local .venv, TF 2.21.0; two runs gave identical
+# MAE values.
+
+control:
+  title: adaptive_ethylene
+  jobtype: adaptive
+  theory: [nn]
+  reference: [pyscf]
+  gl_seed: 20261105
+atoms: [C, C, H, H, H, H]
+coordinates:
+- [-1.1201910500, 0.0000000000, -2.6619413060]
+- [-1.1201910500, 0.0000000000, -1.3317833060]
+- [-0.5905844100, 0.7563566680, -3.2348913060]
+- [-1.6497976900, -0.7563566680, -3.2348913060]
+- [-1.8765477180, -0.5296066400, -0.7588333060]
+- [-0.3638343820, 0.5296066400, -0.7588333060]
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [2]
+  spin: [0]
+  # no partition: the whole six-atom ethylene surface is trainable
+md:
+  initcond: read
+  ninitcond: 5
+  step: 10
+  size: 20.67
+  root: 1
+  activestate: 0
+  sfhp: nosh
+  nactype: ktdc
+  rk4: 1
+  format: molden
+adaptive:
+  maxiter: 2
+  maxsample: 1
+  record_step: 4
+  # Validation energy MAE ceiling (eV); 0 would disable the gate.
+  maxmae: 0.0082
+  keep_md: 1
+  load: 1
+  md_multitask: true
+  md_multipool: 5
+  md_remotetask: false
+  reference_multitask: true
+  reference_multipool: 5
+  reference_remotetask: 0
+  remote_train: 0
+  maxenergy: 0.0
+  minenergy: 0.0
+  maxgrad: 0.0
+  mingrad: 0.0
+  check_population: 0
+  check_energy_order: 0
+  gap_tolerance: 1.0e-6
+  sample_energy: 1
+  sample_grad: 1
+  sample_nac: 0
+  sample_soc: 0
+  sample_dipole: 0
+  sample_transition_dipole: 0
+  sample_oscillator_strength: 0
+nn:
+  method: mlp_eg
+  modeldir: ./nn_ethylene_init
+  train_data: ./egs_ethylene_gate_100.json
+  mult_nn: 2
+  nstate: 2
+  target_states: [0, 1]
+  predict_thread: 1
+  thread: 1
+  write_step_log: 0
+  predict_std: 1
+  execution_mode: local
+  scratch_path: ./scratch
+  eg:
+    depth: 2
+    nn_size: 16
+    batch_size: 5
+    # 30 epochs is what makes the removed outlier move the validation MAE
+    # by ~10 %, so the gate decision sits between measured values rather
+    # than on training noise.
+    epo: 30
+    learning_rate: 1.0e-3
+    epostep: 1
+    loss_weights: '1 10'
+    val_split: 0.1
+pyscf:
+  method: tda
+  functional: pbe
+  basis: sto-3g
+  nstate: 2
+  target_states: [0, 1]
+  execution_mode: local
+  keep_tmp: 0
+  thread: 1

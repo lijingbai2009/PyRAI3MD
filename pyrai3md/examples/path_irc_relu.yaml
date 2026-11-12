@@ -1,0 +1,55 @@
+# Intrinsic reaction coordinate walked with the one-sided penalty model
+# Topology: Dispatcher local / Workflow iterative + batch (curvature) / Calculator local
+# Run: pyrai3md path_irc_relu.yaml
+#
+# `path_irc.yaml` with `path_constraint: relu`: the ReLU model on a walk that
+# starts from a saddle instead of from a minimum. The shell model's arc search
+# and the penalty model's BFGS descent meet the same reaction coordinate here,
+# so the two models' paths can be read against each other on one surface.
+#
+# The penalty needs a curvature to start from, and an IRC already computes one:
+# `irc_mode: hessian` hands the transition state's force constants to the
+# optimizer (`IRCOptimizer.set_curvature`), which the ReLU model takes as its
+# initial BFGS model. That pair - an indefinite matrix and a one-sided penalty -
+# is why `path_inner_maxit` is 20: the model's step solves a pseudo-inverse, and
+# a short budget leaves every point hovering.
+#
+# One branch (`forward`) rather than both: `path_irc.yaml` is the case that
+# shows the two sides, and this one is about the model.
+#
+# What it needs from the host: PySCF (the curvature batch and the walk).
+
+control:
+  title: path_irc_relu
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: irc
+  maxit: 6
+  irc_direction: forward
+  irc_mode: hessian
+  path_constraint: relu
+  path_radius: 0.15
+  path_inner_maxit: 20
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+hessian:
+  hess_step: 0.01
+
+atoms: [H, C, N]
+coordinates:
+  - [1.150009101, 0.000000000, 0.304989560]
+  - [0.020988521, 0.000000000, 0.038392731]
+  - [-0.021596509, 0.000000000, 1.209028017]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

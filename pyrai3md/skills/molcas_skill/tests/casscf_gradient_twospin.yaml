@@ -1,0 +1,48 @@
+version: 1.0
+name: casscf_gradient_twospin_test
+
+# The per-step ask the main framework makes, on a ladder that spans two spin
+# manifolds: `energy gradient` resolves to the named profile `casscf_gradient`,
+# and #449 routes a mixed ladder through the grouped builder whatever the
+# profile is called. The deck therefore runs one RASSCF job per manifold, each
+# with its own ALASKA roots (state 0 and 1 in the singlet job as roots 1 and 2,
+# state 2 the triplet job's root 1). Before that change the same input produced
+# a single `Spin=1` job that was then asked for `ROOT=1..3`, i.e. for a root
+# living in the manifold the deck never built.
+#
+# This is also the leg that shows the reader labels the two blocks with their
+# own spin: `blocks_per_iteration` now comes from the same function the builder
+# used, instead of the profile name.
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 2]
+  target_states: [0, 1, 2]
+  jobtype: energy gradient
+  profile: casscf_gradient
+  method: casscf
+  basis: ano-s-mb
+  # CAS(2,3): the triplet job asks for one root, and RAS2=3 carries the three
+  # determinants that make it exist (CAS(2,2) dies with "You can't ask for more
+  # roots than there are configurations").
+  nact_elec: 2
+  nact_orb: 3
+  inactive_orb: 6
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    tolerance: 1.0e-06
+  gradient:
+    shape: [3, 6, 3]

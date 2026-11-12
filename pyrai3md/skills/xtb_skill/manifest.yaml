@@ -1,0 +1,81 @@
+name: xtb
+backend:
+  module: backend
+  class: XtbBackend
+# Periodic boundary support (read by query.get_metadata -> the
+# framework capability gate and the skill validation). GFN-FF supports
+# full 3D periodicity.
+supports_pbc: true
+units:
+  energy: hartree
+  gradient: hartree/bohr
+  stress: hartree/bohr^3
+roles:
+  qm: XtbBackend
+  qm2: XtbBackend
+  mm: XtbBackend
+capabilities:
+- energy
+- gradient
+- stress
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). Only a thread axis: this skill starts no MPI
+# ranks, so one calculation is one process.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+
+profiles:
+  gfn2_energy:
+    capability: energy
+    method: gfn2
+    steps:
+    - energy
+  gfn2_gradient:
+    capability: gradient
+    method: gfn2
+    steps:
+    - energy
+    - gradient
+  gfn1_energy:
+    capability: energy
+    method: gfn1
+    steps:
+    - energy
+  gfn1_gradient:
+    capability: gradient
+    method: gfn1
+    steps:
+    - energy
+    - gradient
+  gfn0_energy:
+    capability: energy
+    method: gfn0
+    steps:
+    - energy
+  gfn0_gradient:
+    capability: gradient
+    method: gfn0
+    steps:
+    - energy
+    - gradient
+  gfn_ff_energy:
+    capability: energy
+    method: gfn_ff
+    steps:
+    - energy
+  gfn_ff_gradient:
+    capability: gradient
+    method: gfn_ff
+    steps:
+    - energy
+    - gradient

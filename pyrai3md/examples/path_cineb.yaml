@@ -1,0 +1,53 @@
+# Climbing-image nudged elastic band on the same endpoints
+# Topology: Dispatcher local / Workflow iterative + batch (band fan-out) / Calculator local
+# Run: pyrai3md path_cineb.yaml
+#
+# path_neb.yaml with `neb_climb: true`, which turns the band into a CI-NEB: once
+# the perpendicular force max falls below `neb_climb_threshold`, the highest image
+# has its parallel force inverted and no spring, so it is driven onto the saddle
+# instead of being held short of it by its neighbours. The latch is one-way - a
+# band that is being driven towards a saddle and then handed back to the springs
+# would leave it again.
+#
+# Measured on the analytic instrument of `qualification/verification/test_path.py`
+# (a curved two-coordinate surface whose saddle is known): both arms settle, and
+# the climbing image ends on the saddle with its own force below the threshold
+# while the plain band's highest image stays slightly off it. The `climb` column
+# of `path_status.txt` is the latch: it turns on once and stays on.
+#
+# What it needs from the host: PySCF (five images per round).
+
+control:
+  title: path_cineb
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: neb
+  maxit: 5
+  neb_reactant: path_reactant.xyz
+  neb_product: path_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+  neb_climb: true
+  neb_climb_threshold: 0.05
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [0.000000000, 0.000000000, 1.055827000]
+  - [0.000000000, 0.000000000, -0.010776000]
+  - [0.000000000, 0.000000000, -1.145051000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

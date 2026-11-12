@@ -1,0 +1,48 @@
+version: 1.0
+name: nn_pes_eg_gradient_test
+# Serve the ensemble case 00 trained: energies in Hartree and gradients in
+    # Hartree/Bohr, loaded once and answered by a compiled forward pass. The
+    # geometry is a training geometry of the same folder, because the skill
+    # refuses an atom count the networks were not built for.
+    #
+    # The batch the forward pass runs in is a keyword of the role section, so
+    # it arrives with the network rather than with the request.
+
+input:
+  atoms: [C, C, C, C, C, C, H, H, H, H, H, H, C, H, C, C, O, H]
+  coordinates:
+    - [-2.9083132, 7.8411096, -0.0702194]
+    - [-1.6931105, 8.4133693, 0.6512565]
+    - [-3.8459958, 8.3900949, 1.1666596]
+    - [-1.0216257, 7.4429598, 1.6028474]
+    - [-2.4619556, 8.9089639, 1.8499307]
+    - [-1.6874987, 7.8364748, 2.6894182]
+    - [-2.2625545, 9.9333107, 2.3056992]
+    - [-2.9383251, 7.9309740, -1.1471826]
+    - [-1.1933051, 9.1360830, 0.0428741]
+    - [-4.7047318, 9.0921007, 1.0200999]
+    - [-0.3820126, 6.5675405, 1.6453516]
+    - [-1.5874013, 7.4083646, 3.5851790]
+    - [-3.3532789, 6.4541791, 0.3104579]
+    - [-3.2106000, 5.3449863, -0.0853950]
+    - [-4.1464620, 6.9244487, 1.3870082]
+    - [-4.8658762, 6.2234127, 2.4157030]
+    - [-5.1800004, 6.8168049, 3.4481760]
+    - [-4.8186387, 5.0921524, 2.2211712]
+  charges: 0
+  multiplicity: 1
+  nstate: 2
+  state_spin: [0, 0]
+  profile: mlp_eg_gradient
+  method: mlp_eg
+  execution_mode: local
+  scratch_path: ./tmp
+  # Named here rather than derived: the flat config the skill entry point
+  # reads carries no project, so leaving it out lets the service modes and
+  # the standalone mode write their products into different directories.
+  nn_project: NN_EG
+  modeldir: ./nn_eg
+  mult_nn: 2
+  target_states: [0, 1]
+  eg:
+    batch_size_predict: 128

@@ -1,0 +1,81 @@
+# Intrinsic reaction coordinate on a moving box, both directions
+# Topology: Dispatcher local / Workflow iterative / Calculator local
+# Run: pyrai3md path_cell_irc.yaml
+#
+# The variable-cell arm of the IRC, and the only case that walks both branches
+# of a saddle whose lattice is a variable. The two things it adds:
+#
+# 1. The seed. The imaginary mode is atomic, and this run's joint vector is
+#    (3N+6): `IRCOptimizer.seed` moves the atoms one `path_radius` on the
+#    *atomic* weights and leaves the six lattice components where the saddle
+#    had them, then each branch's walk relaxes the box on its own as it
+#    descends. Handing the joint weights to a 3N mode is a shape mismatch, and
+#    this case is what exercises the pair.
+# 2. Two branches that each own a box. `irc_direction: both` runs one walker per
+#    side, so two independent cell relaxations start from one saddle.
+#
+# Where the mode comes from: `irc_mode: molden`, read from the shipped
+# `path_irc.freq.molden` (the same saddle's Hessian `path_irc_mode` uses). The
+# file is atomic, which is exactly what the seed needs, and reading it keeps
+# this case about the cell half rather than about paying for a curvature batch
+# on the force field it walks. That surface is GFN-FF, where this geometry is
+# a minimum (`irc_mode: hessian` refuses it: "lowest frequency 895.356
+# cm^-1"), so the file's mode is a direction and only one of its two sides
+# descends: both branches are seeded and evaluated from the saddle, and the
+# forward one commits no point because its first probe climbs (measured in
+# round `tmp_20261022_084519`: backward walked 1000.0 -> 996.05 A^3 over four
+# points, forward recorded its saddle row and stopped).
+#
+# The geometry is the HCN/HNC bridging guess inside a 10 A box; the cell is
+# large enough that the periodic image of the molecule does not interact with
+# it, so what moves the box is the applied 1 kbar, not a boundary effect.
+#
+# Functional test: `maxit` is the budget, not a convergence claim.
+#
+# What it needs from the host: xtb (GFN-FF), periodic.
+
+control:
+  title: path_cell_irc
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: irc
+  maxit: 4
+  irc_direction: both
+  irc_mode: molden
+  irc_mode_file: path_irc.freq.molden
+  path_radius: 0.15
+  path_inner_maxit: 12
+  optimize_cell: true
+  opt_pressure: 1000.0
+  opt_cell_coupling: isotropic
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+
+atoms: [H, C, N]
+coordinates:
+  - [1.150009101, 0.000000000, 0.304989560]
+  - [0.020988521, 0.000000000, 0.038392731]
+  - [-0.021596509, 0.000000000, 1.209028017]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

@@ -1,0 +1,53 @@
+# ONIOM2 point-charge embedding under MD: ORCA DFT on one water embedded in
+# the HF charges of a second water (PySCF), three NVE steps.
+# Topology: Dispatcher local / Workflow single / Calculator composite (3 tasks)
+# Run: pyrai3md multiscale_oniom2_orca_embedding_md.yaml
+#
+# The embedding rows follow the live geometry: each step rewrites the outer
+# charge row from the new coordinates before the high-level term runs.
+
+control:
+  title: multiscale_oniom2_orca_embedding_md_example
+  jobtype: md
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+  gl_seed: 20261105
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.0, 1.0, 1.0]
+  - [2.0, 1.0, 1.0]
+  - [1.0, 2.0, 1.0]
+  - [5.0, 5.0, 5.0]
+  - [6.0, 5.0, 5.0]
+  - [5.0, 6.0, 5.0]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [0, 0, 0]
+  ci: [1]
+  spin: [0]
+  highlevel: [1, 2, 3]
+  embedding: true
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 3
+  size: 20.67
+  direct: 1
+  buffer: 1
+  randvelo: 1
+  temperature: 100
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

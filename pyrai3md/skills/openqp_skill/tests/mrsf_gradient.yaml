@@ -1,0 +1,32 @@
+version: 1.0
+name: mrsf_gradient_test
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  profile: mrsf_gradient
+  method: mrsf
+  basis: sto-3g
+  functional: bhhlyp
+  target_states: [0]
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [3]
+    tolerance: 1e-6
+  gradient:
+    value: null
+    shape: [3, 6, 3]
+    tolerance: 1e-6

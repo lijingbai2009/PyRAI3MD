@@ -1,0 +1,199 @@
+name: nn
+backend:
+  module: backend
+  class: NNPESBackend
+# Molecular (non-periodic) backend: periodic runs are rejected by the
+# skill validation instead of being silently ignored. Periodic features
+# and the int64 index weights are unverified on the test environment.
+supports_pbc: false
+# Coordinates enter in Angstrom and the container's gradient is the
+# derivative with respect to the coordinates as fed (measured ratio to a
+# central difference of its own energy: 0.99998, p10 0.99906, p90
+# 1.00094). The boundary therefore multiplies by BOHR_TO_ANGSTROM to hand
+# over Hartree/Bohr, which is what the integrator kicks with.
+units:
+  energy: hartree
+  gradient: hartree/bohr
+  # What a training file is read as, and what a printed metric is measured
+  # in. They differ on purpose: a fit stores its validation error in the
+  # scaled units of its own normalizer, and the summary multiplies the
+  # spread back out of the scaler the folder was fitted with. schema/
+  # reference.py is the source of both, and tests/test_query.py keeps this
+  # declaration equal to it.
+  label:
+    energy: hartree
+    gradient: hartree/bohr
+    nac: hartree/bohr
+    soc: cm-1
+  metric:
+    energy: eV
+    gradient: eV/angstrom
+    nac: eV/angstrom
+    soc: cm-1
+# Declared so the qualification planner can report a TensorFlow-free
+# machine as skipped rather than passed.
+# The result channels a train / prediction call must come back with
+# (#3.6). The framework's verdict reads this declaration instead of
+# naming the fields itself; an empty channel is a different failure
+# from a missing one, and both are judged against this list.
+result_contract:
+  train:
+  - train_errors
+  - train_metric_units
+  - train_wall_seconds
+  prediction:
+  - predict_errors
+  - predict_metric_units
+requires:
+- tensorflow
+roles:
+  qm: NNPESBackend
+  qm2: false
+  mm: false
+# Extra input sections the skill reads besides its own &nn block. The
+# framework folds each one into the skill config under the same key and
+# knows nothing about their contents; schema/hyper.py owns that vocabulary.
+subsections:
+- eg
+- nac
+- soc
+capabilities:
+- energy
+- gradient
+- nac
+- soc
+# Profiles are {method}_{capability}. The primary ensembles serve energy
+# and gradients from the same network; the couplings come from a second
+# ensemble in the same model folder. eg_nac and eg_nac2 are the composite
+# profiles a dynamics run asks for: they load both ensembles and answer
+# energy, gradient and nac in one call.
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). Only a thread axis: this skill starts no MPI
+# ranks, so one calculation is one process.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+
+# Hyperparameters a grid scan may vary, following the typed-parameter
+# shape the molcas/bagel/openqp manifests use for control_parameters.
+# Only the name and its type are declared here. The value lists come
+# from the run's &search section, and the keyword's own kind (scalar,
+# list, pairs, bool, reg, text) is read from schema/hyper.py, never
+# duplicated below: kind is what decides whether a value broadcasts
+# across ensemble members or stands as one member's value, and a second
+# spelling of it would drift from the first. A name that is not in that
+# vocabulary is a defect, and tests/test_searchable.py refuses it.
+searchable:
+  depth: {type: int}
+  nn_size: {type: int}
+  batch_size: {type: int}
+  epo: {type: int}
+  learning_rate: {type: float}
+  val_split: {type: float}
+  dropout: {type: float}
+  reg_l1: {type: float}
+  reg_l2: {type: float}
+  use_dropout: {type: bool}
+  use_reg_weight: {type: choice, values: [none, l1, l2, l1_l2]}
+  activ: {type: str}
+  activ_alpha: {type: float}
+  loss_weights: {type: list}
+profiles:
+  mlp_e_energy:
+    capability: energy
+    method: mlp_e
+  mlp_e_train:
+    capability: energy
+    method: mlp_e
+    runtype: train
+  # A spin-orbit request is answered by the energy family: an SOC matrix
+  # element is a scalar that depends on geometry, not a derivative, so it is
+  # one output channel of the same network shape and is reported in cm-1.
+  mlp_e_soc:
+    capability: soc
+    method: mlp_e
+  mlp_e_soc_train:
+    capability: soc
+    method: mlp_e
+    runtype: train
+  mlp_eg_energy:
+    capability: energy
+    method: mlp_eg
+  mlp_eg_gradient:
+    capability: gradient
+    method: mlp_eg
+  mlp_eg_train:
+    capability: energy
+    method: mlp_eg
+    runtype: train
+  mlp_g2_gradient:
+    capability: gradient
+    method: mlp_g2
+  mlp_g2_train:
+    capability: gradient
+    method: mlp_g2
+    runtype: train
+  mlp_nac_nac:
+    capability: nac
+    method: mlp_nac
+  mlp_nac_train:
+    capability: nac
+    method: mlp_nac
+    runtype: train
+  mlp_nac2_nac:
+    capability: nac
+    method: mlp_nac2
+  mlp_nac2_train:
+    capability: nac
+    method: mlp_nac2
+    runtype: train
+  eg_nac_energy:
+    capability: energy
+    method: eg_nac
+  eg_nac_gradient:
+    capability: gradient
+    method: eg_nac
+  eg_nac_nac:
+    capability: nac
+    method: eg_nac
+  eg_nac_train:
+    capability: energy
+    method: eg_nac
+    runtype: train
+  eg_nac2_energy:
+    capability: energy
+    method: eg_nac2
+  eg_nac2_gradient:
+    capability: gradient
+    method: eg_nac2
+  eg_nac2_nac:
+    capability: nac
+    method: eg_nac2
+  eg_nac2_train:
+    capability: energy
+    method: eg_nac2
+    runtype: train
+  eg_nac_soc:
+    capability: soc
+    method: eg_nac
+  eg_nac_soc_train:
+    capability: soc
+    method: eg_nac
+    runtype: train
+  eg_nac2_soc:
+    capability: soc
+    method: eg_nac2
+  eg_nac2_soc_train:
+    capability: soc
+    method: eg_nac2
+    runtype: train
+
+# Column names for the scan table (#3.6): the training folder a member
+# belongs to, and the short alias a headed table prints. A folder with
+# no alias prints its own name.
+scan_role_aliases:
+  energy_grad: eg
+  nac: n
+  soc: s

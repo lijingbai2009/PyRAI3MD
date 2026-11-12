@@ -1,0 +1,45 @@
+# Charged multi-center ONIOM2: an ammonium centre (+1) and a neutral water,
+# each ORCA DFT model embedded in the other's HF charges (PySCF outer).
+# Topology: Dispatcher local / Workflow single / Calculator composite (5 tasks)
+# Run: pyrai3md multicenter_oniom2_orca_charged_sp.yaml
+#
+# The total charge is +1 (the sum of the two center charges); the real
+# PySCF task runs at +1, the ammonium center's tasks at +1 and the water
+# center's at 0. The point-charge row center 2 receives carries the
+# ammonium's L(real) charges (net +1); center 1 receives the neutral water.
+
+control:
+  title: multicenter_oniom2_orca_charged_sp_example
+  jobtype: energy gradient
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+
+atoms: [N, H, H, H, H, O, H, H]
+coordinates:
+  - [0.0, 0.0, 0.0]
+  - [0.6, 0.6, 0.6]
+  - [0.6, -0.6, -0.6]
+  - [-0.6, 0.6, -0.6]
+  - [-0.6, -0.6, 0.6]
+  - [5.0, 5.0, 5.0]
+  - [5.7572, 5.0, 5.5873]
+  - [5.0, 5.7572, 5.5865]
+
+molecule:
+  charges: "1; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "1; 1"
+  spin: "0; 0"
+  highlevel: [[1, 2, 3, 4, 5], [6, 7, 8]]
+  embedding: true
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

@@ -1,0 +1,51 @@
+# Transition-state search with the framework's own numerical curvature
+# Topology: Dispatcher local / Workflow iterative + batch (curvature) / Calculator local
+# Run: pyrai3md optimize_ts.yaml
+#
+# What this example is for. `optimize.method: ts` follows a first-order
+# saddle: a partitioned RFO step climbs one curvature direction and descends
+# the rest, and it needs a force-constant matrix before its first step. Left
+# alone, that matrix comes from the framework's own displaced-gradient batch
+# (`&hessian hess_driver` defaults to the framework for a search), which is
+# the producer every backend can serve.
+#
+# Why HCN -> HNC. Three atoms keep the batch at 18 gradient jobs while still
+# being a real isomerization saddle: the starting point below is the bridging
+# guess, and the run converges in 32 evaluations to
+# E = -91.5650982833 Hartree (HF/sto-3g). A `num_freq` job on the geometry it
+# returns reports exactly one imaginary frequency, -1248.4 cm-1 (then 2106.5
+# and 3071.3 cm-1), which is the same count the run prints as
+# `Negative Modes (model)`.
+#
+# The thresholds are the section's defaults; they are spelled out here so the
+# row a reader has to reach is visible next to the step count above.
+
+control:
+  title: optimize_ts_example
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: ts
+  maxit: 60
+  opt_energy: 1e-6
+  opt_grms: 3e-4
+  opt_gmax: 4.5e-4
+  opt_drms: 1.2e-3
+  opt_dmax: 1.8e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.100000000,  0.000000000, 0.610000000]
+  - [0.000000000,  0.000000000, 0.000000000]
+  - [0.000000000,  0.000000000, 1.220000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

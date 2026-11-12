@@ -1,0 +1,48 @@
+# ONIOM2 point-charge embedding over a band: ORCA DFT on one water in the HF
+# charges of a second water (PySCF), three NEB images.
+# Topology: Dispatcher local / Workflow band (iterative) / Calculator composite (oniom)
+# Run: pyrai3md multiscale_oniom2_orca_embedding_neb.yaml
+
+control:
+  title: multiscale_oniom2_orca_embedding_neb_example
+  jobtype: optimize
+  theory: [orca, pyscf]
+  multiscale_type: oniom
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.0, 1.0, 1.0]
+  - [2.0, 1.0, 1.0]
+  - [1.0, 2.0, 1.0]
+  - [5.0, 5.0, 5.0]
+  - [6.0, 5.0, 5.0]
+  - [5.0, 6.0, 5.0]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [0, 0, 0]
+  ci: [1]
+  spin: [0]
+  highlevel: [1, 2, 3]
+  embedding: true
+
+optimize:
+  method: neb
+  maxit: 2
+  neb_reactant: path_oniom_cluster_reactant.xyz
+  neb_product: path_oniom_cluster_product.xyz
+  neb_images: 3
+  neb_interpolate: linear
+  neb_spring: 0.2
+  neb_step: 0.1
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

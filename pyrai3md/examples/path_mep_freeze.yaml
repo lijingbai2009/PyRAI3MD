@@ -1,0 +1,55 @@
+# Minimum energy path with one atom frozen
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_mep_freeze.yaml
+#
+# `path_neb_freeze.yaml` is the same ride on a band; this is the walker's, and
+# the two are separate code paths: a band restores every interior image through
+# a scratch state before each round and after each FIRE step, while a walker
+# builds one mobile mask at `begin` (`pathbase.py::_mobile_mask`) and applies
+# the framework's position solve to every probe it evaluates, so the frozen
+# atom never enters the sphere's bookkeeping.
+#
+# The system is `path_mep.yaml`'s HCN start with atom 3 (the nitrogen) held.
+# The walk then moves the hydrogen and the carbon around a fixed anchor, and
+# every committed frame of `path_geom.xyz` carries the same nitrogen.
+#
+# Functional test: `maxit` is the budget, not a convergence claim. The
+# invariant is the pinned atom, which the runner's post-check and
+# `tools/verify.py` section F read off `path_geom.xyz`.
+#
+# What it needs from the host: PySCF.
+
+control:
+  title: path_mep_freeze
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 5
+  path_radius: 0.15
+  path_inner_maxit: 12
+  path_constraint: sphere
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+atoms: [H, C, N]
+coordinates:
+  - [1.174177304, 0.000000000, -0.007583040]
+  - [0.045975463, 0.000000000, 0.002049630]
+  - [-0.044762048, 0.000000000, 1.262686200]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+system_constraint:
+  unit_length: angstrom
+  fix_atoms: 3
+  fix_id: hold_n
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

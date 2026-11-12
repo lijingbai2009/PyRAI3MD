@@ -1,0 +1,47 @@
+# Multi-center ONIOM2 with per-center derivative couplings: each water is a
+# Molcas CASSCF model (two singlets) embedded in the other's HF charges
+# (PySCF outer).
+# Topology: Dispatcher local / Workflow single / Calculator composite (5 tasks)
+# Run: pyrai3md multicenter_oniom2_molcas_embedding_nac_sp.yaml
+#
+# ORCA refuses NACME when point charges are embedded; Molcas answers each
+# center's pair with its two-pass ESPF + field-free deck. The composite keeps
+# the two blocks apart, as the multi-center QMMM nac carrier does.
+
+control:
+  title: multicenter_oniom2_molcas_embedding_nac_sp_example
+  jobtype: energy gradient nac
+  theory: [molcas, pyscf]
+  multiscale_type: oniom
+
+atoms: [O, H, H, O, H, H]
+coordinates:
+  - [1.0, 1.0, 1.0]
+  - [2.0, 1.0, 1.0]
+  - [1.0, 2.0, 1.0]
+  - [5.0, 5.0, 5.0]
+  - [6.0, 5.0, 5.0]
+  - [5.0, 6.0, 5.0]
+
+molecule:
+  charges: "0; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "2; 2"
+  spin: "0; 0"
+  coupling: "1 2; 1 2"
+  highlevel: [[1, 2, 3], [4, 5, 6]]
+  embedding: true
+
+molcas:
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 6
+  nact_orb: 5
+  inactive_orb: 2
+  nocsf: true
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

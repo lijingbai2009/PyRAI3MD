@@ -1,0 +1,49 @@
+# Constraint example, aperiodic restart baseline: 8 steps in one process, checkpointed like the split.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md constraint_md_restart_base.yaml
+#
+# The continuous half of the pair with constraint_md_restart.yaml: the same water, the same
+# HF/sto-3g surface, the same two held O-H lengths, the same timestep and the same
+# checkpoint cadence (2). The two products are compared frame by frame: the step labels,
+# the time column and the coordinates have to agree, which is what makes the cut invisible
+# to a reader of the trajectory (D-19, D-24).
+#
+control:
+  title: constraint_md_restart_base_example
+  jobtype: md
+  gl_seed: 20260929   # the single seed source (md.seed had no field)
+  theory: [pyscf]
+
+atoms: [O, H, H]
+coordinates:
+  - [0.000000000, 0.000000000, 0.117340000]
+  - [0.000000000, 0.757540000, -0.469360000]
+  - [0.000000000, -0.757540000, -0.469360000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: [1]
+  spin: [0]
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
+
+md:
+  initcond: 0
+  ninitcond: 1
+  sfhp: nosh
+  step: 8
+  checkpoint: 2
+  size: 20.67
+  temperature: 100
+
+system_constraint:
+  unit_length: angstrom
+  unit_angle: degree
+  unit_energy: hartree
+  shake_bond: [[1, 2, 1, 3]]
+  shake_tol: 1e-10
+  shake_id: oh_bonds

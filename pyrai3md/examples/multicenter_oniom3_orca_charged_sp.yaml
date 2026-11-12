@@ -1,0 +1,57 @@
+# Charged multi-center ONIOM3: an ammonium high-level centre (+1) with a
+# neutral water midlevel, a neutral water centre with its own water midlevel,
+# and an outer water on the low layer. ORCA is the high and low method, PySCF
+# the midlevel.
+# Topology: Dispatcher local / Workflow single / Calculator composite (9 tasks)
+# Run: pyrai3md multicenter_oniom3_orca_charged_sp.yaml
+#
+# The total charge is +1. The real layer runs at +1, the ammonium centre's
+# four tasks at +1 (its midlevel water is neutral, so H ∪ I also sums to +1),
+# and the neutral centre's tasks at 0. Each high-level model embeds only its
+# own midlevel.
+
+control:
+  title: multicenter_oniom3_orca_charged_sp_example
+  jobtype: energy gradient
+  theory: [orca, pyscf, orca]
+  multiscale_type: oniom
+
+atoms: [N, H, H, H, H, O, H, H, O, H, H, O, H, H, O, H, H]
+coordinates:
+  - [0.0, 0.0, 0.0]
+  - [0.6, 0.6, 0.6]
+  - [0.6, -0.6, -0.6]
+  - [-0.6, 0.6, -0.6]
+  - [-0.6, -0.6, 0.6]
+  - [5.0, 5.0, 5.0]
+  - [5.7572, 5.0, 5.5873]
+  - [5.0, 5.7572, 5.5865]
+  - [8.0, 5.0, 5.0]
+  - [8.7572, 5.0, 5.5873]
+  - [8.0, 5.7572, 5.5865]
+  - [11.0, 5.0, 5.0]
+  - [11.7572, 5.0, 5.5873]
+  - [11.0, 5.7572, 5.5865]
+  - [14.0, 5.0, 5.0]
+  - [14.7572, 5.0, 5.5873]
+  - [14.0, 5.7572, 5.5865]
+
+molecule:
+  charges: "1; 0"
+  multiplicity: "1; 1"
+  pbc: [0, 0, 0]
+  ci: "1; 1"
+  spin: "0; 0"
+  highlevel: [[1, 2, 3, 4, 5], [9, 10, 11]]
+  midlevel: [[6, 7, 8], [12, 13, 14]]
+  embedding: true
+
+orca:
+  method: dft
+  basis: sto-3g
+  functional: pbe0
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch

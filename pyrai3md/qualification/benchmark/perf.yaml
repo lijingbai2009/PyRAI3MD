@@ -1,0 +1,77 @@
+# =====================================================================
+# Perf benchmark case definition (flat benchmark layout: served by
+# the benchmark/perf.py task module). The case measures the numpy
+# vs numba computational efficiency of the FSSH electronic
+# propagator on the same Tully model the fssh.yaml calibration
+# uses (production.method selects the model, tully1 by default).
+#
+# Legs:      the planner chains ONE production ensemble per FSSH
+#   backend (run_dir/numpy and run_dir/numba, every fssh_* kernel
+#   keyword pinned to the leg backend, fssh_profile on); both legs
+#   share the exact physical setup below and the control gl_seed,
+#   so every trajectory draws the identical random number stream in
+#   both legs and the two ensemble averages must agree to
+#   floating-point noise. No exact quantum reference is computed:
+#   the performance comparison needs only the two-backend agreement
+#   plus the wall-time measurement.
+# Metrics:   backend_population_max_dev checks the two ensemble
+#   averages against each other (the physics of both backends is
+#   identical); the wall times and the function-level profile
+#   speedups are reported, never judged.
+#
+# Performance tuning: ninitcond stays large enough for a stable
+# wall-time measurement while keeping the case cheap, and substep
+# amplifies the electronic substep loop (the 2-state kernels are
+# tiny; the numba advantage only becomes measurable with a long
+# inner loop per md step).
+#
+# Numba is an optional dependency: without it the planner reports
+# a diagnostic skip task instead of planning the comparison.
+#
+# Sep 1 2026
+# By Jingbai Li
+# Hoffmann Institute of Advanced Materials, Shenzhen Polytechnic Univ.
+# =====================================================================
+
+case: perf
+description: >-
+  FSSH numpy vs numba performance comparison case: the identical
+  production ensemble runs once per backend on the selected Tully
+  model (production.method, tully1 by default) from the fixed
+  initial coordinate and velocity; the backends are compared by
+  wall time, function-level profile timing and ensemble-average
+  agreement.
+
+production:
+  method: tully1         # Tully model under test (pmd_env
+                         # benchmark.perf entries override it)
+  ninitcond: 100         # trajectories per backend leg (wall-time
+                         # statistics converge well below the 400
+                         # trajectories of the accuracy case)
+  ncpus: 4               # multitask pool size for the trajectories
+                         # (mapped to the md-section multipool keyword)
+  deco: 'off'            # identical to the fssh calibration case:
+                         # no decoherence correction
+  nstep: 300             # md steps per trajectory
+  dt: 20                 # md time step (au, ~0.5 fs)
+  sfhp: fssh
+  rk4: '1'               # RK4 electronic propagation (same as the
+                         # calibration case)
+  nactype: nac           # exact NAC from the qdm transition gradients
+  substep: 50            # electronic substeps per md step: the
+                         # inner loop amplification that makes the
+                         # 2x2 kernel overheads measurable
+  # Wavepacket / model setup (atomic units; identical to the fssh
+  # calibration defaults so both cases stay comparable)
+  x0: -20                # initial coordinate (Bohr)
+  v0: 0.005              # initial velocity (Bohr/au)
+  sigma: 0.5             # packet width (Bohr)
+  model_mass: 2000.0     # model mass (au)
+  initial_state: 0       # initially populated adiabatic state
+
+metrics:
+  # Maximum absolute deviation between the two backend ensemble
+  # averages (same physics, same random stream: expected at the
+  # floating-point noise level).
+  backend_population_max_dev:
+    tolerance: 1.0e-10

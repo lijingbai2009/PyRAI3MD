@@ -1,0 +1,236 @@
+name: molcas
+backend:
+  module: backend
+  class: MolcasBackend
+# Molecular (non-periodic) backend: periodic runs are rejected by the
+# skill validation instead of being silently ignored.
+supports_pbc: false
+# The initial-guess file this skill can read from the input directory:
+# a converged orbital file named `{title}<suffix>` (or `<input
+# basename><suffix>`). The interface layer resolves it and the task
+# queue fills `field` when the input left it empty; an explicit value
+# in the skill section wins. Declared here so the framework names no
+# skill (#3.1).
+initial_guess:
+  suffix: .StrOrb
+  field: guess_orbital
+units:
+  energy: hartree
+  gradient: hartree/bohr
+roles:
+  qm: MolcasBackend
+  qm2: false
+  mm: false
+capabilities:
+- energy
+- gradient
+- nonadiabatic_coupling
+- geometry_optimization
+- abinitio_dynamics
+- surface_hopping
+- absorption_spectrum
+- soc_coupling
+- vibrational_frequency
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+# The high-level layer receives an ONIOM environment's 0-order
+# charges: an electrostatically embedded composite recomputes them
+# every evaluation and returns the gradient at those fixed charges,
+# so its recorded Etot is not a constant of the motion (#3.8).
+receives_environment_charges: true
+control_parameters:
+  method:
+    type: str
+    default: casscf
+  basis:
+    type: str
+    default: ano-rcc-vdzp
+  nact_elec:
+    type: int
+    default: 2
+  nact_orb:
+    type: int
+    default: 2
+  inactive_orb:
+    type: int
+    default: 0
+  scf_converge:
+    type: float
+    default: 1e-8
+  thread:
+    type: int
+    default: 1
+  embedding:
+    type: str
+    default: none
+  read_charge:
+    type: str
+    default: none
+  caspt2_type:
+    type: str
+    default: ''
+  nocsf:
+    type: bool
+    default: true
+  caspt2_ipea_shift:
+    type: float
+    default: null
+  caspt2_real_shift:
+    type: float
+    default: 0.0
+  caspt2_imaginary_shift:
+    type: float
+    default: 0.2
+  dwtype:
+    type: int
+    default: 3
+  dwms_zeta:
+    type: float
+    default: 1.0
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). The framework reads this block instead of
+# guessing a keyword: `threads` is what one rank may spread over,
+# `ranks` how many ranks a calculation starts.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+  ranks:
+    keyword: nproc
+    default: 1
+
+profiles:
+  hf_energy:
+    capability: energy
+    method: hf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - SCF
+  casscf_energy:
+    capability: energy
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+  casscf_gradient:
+    capability: gradient
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - ALASKA
+  casscf_nac:
+    capability: nonadiabatic_coupling
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - ALASKA
+  casscf_properties:
+    capability: energy
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - ALASKA
+    - RASSI
+  casscf_geometry_optimization:
+    capability: geometry_optimization
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - SLAPAF
+  casscf_abinitio_dynamics:
+    capability: abinitio_dynamics
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - ALASKA
+    - DYNAMIX
+  casscf_surface_hopping:
+    capability: surface_hopping
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - SURFACEHOP
+    - ALASKA
+    - DYNAMIX
+  casscf_soc:
+    capability: soc_coupling
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - ALASKA
+    - RASSI
+    requires_dual_rasscf: true
+  casscf_absorption:
+    capability: absorption_spectrum
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - RASSI
+  caspt2_energy:
+    capability: energy
+    method: caspt2
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - CASPT2
+  caspt2_properties:
+    capability: energy
+    method: caspt2
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - CASPT2
+    - ALASKA
+    - RASSI
+  caspt2_absorption:
+    capability: absorption_spectrum
+    method: caspt2
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - CASPT2
+    - RASSI
+  casscf_frequency:
+    capability: vibrational_frequency
+    method: casscf
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - MCKINLEY
+  caspt2_frequency:
+    capability: vibrational_frequency
+    method: caspt2
+    modules:
+    - GATEWAY
+    - SEWARD
+    - RASSCF
+    - CASPT2
+    - MCKINLEY

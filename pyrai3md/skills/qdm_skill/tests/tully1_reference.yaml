@@ -1,0 +1,29 @@
+version: 1.0
+name: tully1_reference_test
+input:
+  atoms: [X]
+  coordinates:
+    - [-7.9376581, 0.000000000, 0.000000000]
+  velocities:
+    - [0.005, 0.000000000, 0.000000000]
+  charges: 0
+  multiplicity: 1
+  nstate: 2
+  state_spin: [0, 0]
+  profile: tully1_reference
+  method: tully1
+  scratch_path: ./tmp
+  target_states: [0, 1]
+  current_state: 0
+  model_mass: 2000.0
+  ref_ngrid: 512
+  ref_dt: 20.0
+  ref_nsteps: 200
+  ref_save_every: 1
+  wavepacket_sigma: 0.5
+  execution_mode: local
+
+expected:
+  final_norm:
+    value: 1.0
+    tolerance: 1e-4

@@ -1,0 +1,152 @@
+PyRAI3MD Research License 1.0
+
+Copyright (c) 2026 Jingbai Li.
+All rights reserved, except as expressly granted below.
+
+1. SCOPE AND DEFINITIONS
+
+This license governs the PyRAI3MD source code, executable code, and accompanying
+materials distributed with this license, except components expressly identified
+as subject to other terms (the "Software").
+
+"Licensor" means the copyright holder identified above, or a person or entity
+authorized by the relevant rights holder to license the Software. This license
+grants rights only to the extent the Licensor has authority to grant them.
+
+"You" means an individual or legal entity exercising rights under this license.
+
+"Noncommercial Research and Education" means research, teaching, learning, and
+scientific evaluation that are not undertaken for commercial advantage, monetary
+compensation for services, or the development or delivery of commercial products
+or services. Ordinary academic salaries, tuition, and public or charitable
+research grants do not, by themselves, make an activity commercial.
+
+"Commercial Use" includes:
+
+  (a) use by a for-profit entity, including internal research, evaluation,
+      development, testing, and production;
+  (b) use on behalf of, or to deliver research, calculations, advice, or other
+      services to, a for-profit entity;
+  (c) use to develop, improve, validate, support, or deliver a commercial product
+      or service, including paid consulting, contract research, hosted computing,
+      software-as-a-service, and commercial simulation or AI platforms; and
+  (d) selling, commercially licensing, or commercially distributing the Software
+      or a modified version, or incorporating it into a commercial offering.
+
+An academic or nonprofit affiliation does not exempt an activity from these
+Commercial Use provisions. Corporate funding alone does not make independent
+academic research commercial if the sponsor receives only public acknowledgments
+and the same publicly available results as other members of the public. Research
+providing a corporate sponsor with private deliverables, preferential access to
+results, or product-development services requires commercial authorization.
+
+2. FREE RESEARCH LICENSE
+
+Subject to this license, the Licensor grants You a worldwide, nonexclusive,
+royalty-free license under the Licensor's copyright to access, run, reproduce,
+study, and modify the Software solely for Noncommercial Research and Education.
+You may distribute the original or modified Software without charge for those
+purposes, provided that You:
+
+  (a) include this complete license and retain applicable copyright, attribution,
+      and third-party notices;
+  (b) prominently identify modifications and their authors, and do not represent
+      a modified version as an official release endorsed by the Licensor;
+  (c) distribute modified versions of the covered Software under this license,
+      with source code for the covered Software and modifications included or
+      made available to recipients without charge; and
+  (d) do not grant recipients commercial rights or impose terms that contradict
+      this license. Recipients receive rights to the Licensor's Software directly
+      from the Licensor under this license.
+
+This license does not require You to publish private modifications or research
+data. A hosted service may be provided under this license only for Noncommercial
+Research and Education; Commercial Use requires separate authorization even if
+no copy of the Software is distributed.
+
+3. COMMERCIAL USE REQUIRES A SEPARATE LICENSE
+
+No Commercial Use is permitted under this research license. Before undertaking
+Commercial Use, You must obtain a separate written commercial license from the
+Licensor or its authorized commercial licensing representative. Commercial
+terms, fees, scope, and any exceptions must be agreed in that separate license.
+Permission to access a public repository is not commercial authorization.
+
+Commercial licensing inquiries: lijingbai@zspt.edu.cn
+
+4. RIGHTS RESERVED BY THE LICENSOR
+
+The restrictions in this license govern the rights granted to You; they do not
+restrict a copyright holder's exercise of its own rights. The Licensor reserves,
+to the extent of its rights, the right to use and commercialize the Software,
+offer paid products and services, and grant different or additional licenses to
+other parties, including companies designated by the Licensor.
+
+No ownership is transferred by this license. No rights to third-party code,
+patents, or other intellectual property are granted beyond rights the Licensor
+is authorized to grant. No trademark rights are granted except reasonable use
+of the PyRAI3MD name to identify the Software and accurately describe its use.
+
+5. RESEARCH OUTPUTS AND INDEPENDENT WORKS
+
+This license does not claim ownership of Your scientific results, publications,
+simulation outputs, datasets, or trained model parameters merely because they
+were produced using the Software. Such outputs are not required to be licensed
+under this license unless they contain covered Software. This provision does
+not authorize Commercial Use of the Software to produce those outputs or waive
+any separate rights or terms applicable to inputs or third-party materials.
+
+Independent programs and plugins that merely communicate with the Software and
+do not incorporate its code are not required by this license to adopt these
+terms. Their use does not exempt any Commercial Use of PyRAI3MD from Section 3.
+
+6. THIRD-PARTY COMPONENTS AND EARLIER RELEASES
+
+Separately licensed dependencies and third-party components retain their own
+licenses. Where a file or component carries a separate license, that license
+governs that file or component, and this license does not replace or restrict
+rights granted under it. Applicable third-party notices must be preserved.
+
+This license does not revoke or retroactively change rights in copies validly
+released under an earlier license, including MIT-licensed copies. Those copies
+and their separately licensed portions remain governed by their original terms.
+Rights in those copies do not automatically extend to new code distributed only
+under this license.
+
+7. CONTRIBUTIONS
+
+This license does not assign ownership of contributions or automatically grant
+the Licensor commercial relicensing rights in another author's work. Before a
+third-party contribution is accepted, any rights needed for the project's
+research and commercial licensing model must be secured through a separate
+contributor agreement or other sufficient written permission.
+
+8. TERMINATION
+
+Your rights under this license terminate automatically if You violate its terms.
+If You cease the violation and fully remedy it within 30 days after first
+receiving written notice from the Licensor, Your rights are reinstated unless
+they were previously terminated and reinstated for a violation of this license.
+Reinstatement does not erase obligations or liabilities arising before remedy
+and does not itself grant commercial authorization. On termination, You must
+stop activities requiring rights under this license. Sections 3 through 10
+survive termination to the extent applicable.
+
+9. DISCLAIMER OF WARRANTY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED
+"AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+TITLE, AND NONINFRINGEMENT. THE LICENSOR DOES NOT WARRANT THE ACCURACY,
+COMPLETENESS, OR SCIENTIFIC VALIDITY OF CALCULATIONS OR RESULTS. YOU ARE
+RESPONSIBLE FOR VALIDATING THE SOFTWARE AND ITS OUTPUTS FOR YOUR PURPOSES.
+
+10. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE LICENSOR
+OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH
+THE SOFTWARE, ITS USE, OR OTHER DEALINGS IN THE SOFTWARE.
+
+This is a source-available research license with commercial-use restrictions;
+it is not an OSI-approved open-source license.

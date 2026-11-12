@@ -1,0 +1,68 @@
+# Framework-driven NAMD (FSSH + kTDC) on C2H4 with Molcas CASSCF, on a ladder
+# that spans two spin manifolds.
+# Topology: Dispatcher local / Workflow single / Calculator local
+# Run: pyrai3md md_molcas_fssh_twospin.yaml
+#
+# The twin of `md_molcas_fssh.yaml` with `ci: "2 1"` / `spin: "0 1"`: two
+# singlets and one triplet. Every step asks the skill for `energy gradient`,
+# which resolves to the named profile `casscf_gradient`; #449 routes a mixed
+# ladder through the grouped builder, so each step's deck carries one RASSCF
+# job per manifold (`Spin=1` with roots 1-2, `Spin=3` with root 1) instead of a
+# single singlet job that was then asked for a root living in the other
+# manifold. That is the channel this example exists to exercise: the
+# previously missing framework-driven mixed-spin energy+gradient path.
+#
+# kTDC estimates the coupling from the energy curvature, so no ALASKA coupling
+# is asked for; the one declared pair is the singlet-singlet `1 2`. A hop
+# between manifolds would need SOC (`md.dosoc`), which this leg deliberately
+# does not turn on.
+
+control:
+  title: md_molcas_fssh_twospin_example
+  jobtype: md
+  theory: [molcas]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, 0.000000000, -2.661941306]
+  - [-1.120191050, 0.000000000, -1.331783306]
+  - [-0.590584410, 0.756356668, -3.234891306]
+  - [-1.649797690, -0.756356668, -3.234891306]
+  - [-1.876547718, -0.529606640, -0.758833306]
+  - [-0.363834382, 0.529606640, -0.758833306]
+
+# The same Maxwell-Boltzmann draw the other ethylene examples use.
+velocities:
+  - [0.000233177, -0.000042299, -0.000208531]
+  - [-0.000217441, 0.000195315, 0.000185800]
+  - [-0.000893166, -0.000054466, 0.000176273]
+  - [0.001361820, -0.000285727, 0.000253295]
+  - [-0.000024165, -0.000666228, 0.000131482]
+  - [-0.000631993, -0.000816868, -0.000290190]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  ci: "2 1"
+  spin: "0 1"
+  coupling: "1 2"
+
+md:
+  root: "2"
+  initcond: 0
+  ninitcond: 1
+  sfhp: fssh
+  nactype: ktdc
+  step: 10
+  size: 20.67
+
+molcas:
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 2
+  inactive_orb: 7
+  # Pinned for the same reason as `md_molcas_fssh.yaml`: with jobtype 'md' the
+  # skill would resolve its DYNAMIX propagation profile and double-advance the
+  # geometry against the framework integrator.
+  profile: casscf_gradient

@@ -1,0 +1,49 @@
+version: 1.0
+name: mrsf_soc_gradient_test
+
+# Energies, gradients and spin-orbit couplings in one run (runtype=data):
+# OpenQP solves the triplet ladder first, then the configured singlet one,
+# takes a gradient on each, and couples the two recorded ladders at the end.
+# A spin-orbit run addresses its gradients by ladder (`grad_s` / `grad_t`)
+# and refuses the single `grad` selector, because one index cannot say which
+# of the two ladders it counts.
+#
+# Measured on OpenQP 1.3.1 with this deck (sto-3g, BHHLYP): target_states
+# [0, 3] put gradients in grad_s_1 and grad_t_2 (norms 0.185099 and
+# 0.317026 hartree/bohr; the two states not asked for stay zero), the four
+# energies agree with the runtype=soc deck below to the last digit printed
+# there, and the two declared pairs collapse to 0.0000 cm-1 (S0/T0,
+# symmetry-forbidden) and 8.6359 cm-1 (S1/T1).
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  charges: 0
+  multiplicity: 1
+  nstate: 4
+  state_spin: [0, 0, 2, 2]
+  coupling: [[0, 1], [0, 2], [1, 3]]
+  profile: mrsf_soc_gradient
+  method: mrsf
+  basis: sto-3g
+  functional: bhhlyp
+  target_states: [0, 3]
+  execution_mode: local
+
+expected:
+  energy:
+    value: null
+    shape: [4]
+    tolerance: 1e-6
+  gradient:
+    value: null
+    shape: [4, 6, 3]
+    tolerance: 1e-6
+  soc:
+    shape: [2]

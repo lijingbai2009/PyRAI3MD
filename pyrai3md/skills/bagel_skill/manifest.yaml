@@ -1,0 +1,139 @@
+name: bagel
+backend:
+  module: backend
+  class: BagelBackend
+# Molecular (non-periodic) backend: periodic runs are rejected by the
+# skill validation instead of being silently ignored.
+supports_pbc: false
+units:
+  energy: hartree
+  gradient: hartree/bohr
+roles:
+  qm: BagelBackend
+  qm2: false
+  mm: false
+capabilities:
+- energy
+- gradient
+- nonadiabatic_coupling
+- geometry_optimization
+- vibrational_frequency
+- dipole
+- transition_dipole
+# The names this skill's slurm runner writes (#3.8): the batch
+# script suffix and the job log suffix, matched at the end of a
+# file name. The qualification harness looks for these instead of
+# spelling them itself.
+slurm_artifacts:
+  script: .sbatch
+  log: _slurm.out
+# The high-level layer receives an ONIOM environment's 0-order
+# charges: an electrostatically embedded composite recomputes them
+# every evaluation and returns the gradient at those fixed charges,
+# so its recorded Etot is not a constant of the motion (#3.8).
+receives_environment_charges: true
+control_parameters:
+  method:
+    type: str
+    default: casscf
+  basis:
+    type: str
+    default: cc-pvdz
+  df_basis:
+    type: str
+    default: ''
+  nact_elec:
+    type: int
+    default: 2
+  nact_orb:
+    type: int
+    default: 2
+  nclosed:
+    type: int
+    default: 0
+  scf_converge:
+    type: float
+    default: 1e-8
+  pt2_shift:
+    type: float
+    default: 0.2
+  maxit_scf:
+    type: int
+    default: 500
+  maxit_opt:
+    type: int
+    default: 100
+  opt_state_i:
+    type: int
+    default: 0
+  opt_state_j:
+    type: int
+    default: 0
+  req_dipole:
+    type: bool
+    default: null
+  req_transition_dipole:
+    type: bool
+    default: null
+  thread:
+    type: int
+    default: 1
+  mpiexe:
+    type: str
+    default: mpirun
+# Compute resources this skill consumes, named by the keywords a run
+# sets them with (#306). The framework reads this block instead of
+# guessing a keyword: `threads` is what one rank may spread over,
+# `ranks` how many ranks a calculation starts.
+resources:
+  # Keywords this skill reads and the values used when an input omits them
+  threads:
+    keyword: thread
+    default: 1
+  ranks:
+    keyword: nproc
+    default: 1
+
+profiles:
+  casscf_energy:
+    capability: energy
+    method: casscf
+  casscf_gradient:
+    capability: gradient
+    method: casscf
+  casscf_nac:
+    capability: nonadiabatic_coupling
+    method: casscf
+  casscf_frequency:
+    capability: vibrational_frequency
+    method: casscf
+  casscf_geometry_optimization:
+    capability: geometry_optimization
+    method: casscf
+  casscf_dipole:
+    capability: dipole
+    method: casscf
+  casscf_transition_dipole:
+    capability: transition_dipole
+    method: casscf
+  xmscaspt2_energy:
+    capability: energy
+    method: xmscaspt2
+  xmscaspt2_gradient:
+    capability: gradient
+    method: xmscaspt2
+  xmscaspt2_nac:
+    capability: nonadiabatic_coupling
+    method: xmscaspt2
+  xmscaspt2_frequency:
+    capability: vibrational_frequency
+    method: xmscaspt2
+  xmscaspt2_geometry_optimization:
+    capability: geometry_optimization
+    method: xmscaspt2
+  xmscaspt2_dipole:
+    capability: dipole
+    method: xmscaspt2
+  xmscaspt2_transition_dipole:
+    capability: transition_dipole
+    method: xmscaspt2

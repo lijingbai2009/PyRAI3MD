@@ -1,0 +1,73 @@
+# Minimum energy path on a moving box, with the one-sided penalty model
+# Topology: Dispatcher local / Workflow iterative (path, walker) / Calculator local
+# Run: pyrai3md path_cell_mep_relu.yaml
+#
+# `path_cell_mep.yaml` with `path_constraint: relu`, the other of the two
+# constrained-step models, on a box that moves. The sphere model finds the next
+# point by an arc search on the shell; the ReLU model adds a one-sided
+# quadratic penalty on `(rho - rho_t)` and descends with BFGS, so what this
+# case adds is that the penalty, its curvature product and the shell-crossing
+# cap all run on the joint (3N+6) vector. The shipped relu case
+# (`path_mep_relu`) is fixed-cell, and no other case had ever stepped a box
+# with it.
+#
+# The system, the pressure and the cell thresholds are `path_cell_mep`'s. The
+# molecule sits at the centre of the box rather than on its corner - a margin,
+# not a workaround: an atom exactly on a face is one floating-point
+# perturbation away from being wrapped, and `path_mep_pbc` is the case that
+# measured what a frame mismatch costs a walk (`pathbase.py::
+# _continuous_atoms`, `dev/methods/PATH_DEVELOPMENT.md` section 15a). Its
+# volume moves by about 0.1 A^3 over six points, which is what the runner's
+# `_check_path_cell_record` reads.
+#
+# Functional test: `maxit` is the budget here, not a convergence claim - the
+# same posture the other cell path examples ship with.
+#
+# What it needs from the host: xtb (GFN-FF).
+
+control:
+  title: path_cell_mep_relu
+  jobtype: optimize
+  theory: [xtb]
+  driver: main
+
+optimize:
+  method: mep
+  maxit: 8
+  path_radius: 0.05
+  path_inner_maxit: 20
+  path_constraint: relu
+  optimize_cell: true
+  opt_pressure: 1000.0
+  opt_cell_coupling: isotropic
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+  opt_csrms: 40.0
+  opt_csmax: 60.0
+  opt_cerms: 5.0e-5
+  opt_cemax: 7.0e-5
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [5.000000000, 5.000000000, 5.000000000]
+  - [5.000000000, 5.000000000, 6.330000000]
+  - [5.000000000, 5.920000000, 5.000000000]
+  - [5.000000000, 4.080000000, 5.000000000]
+  - [5.000000000, 5.920000000, 6.330000000]
+  - [5.000000000, 4.080000000, 6.330000000]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  pbc: [1, 1, 1]
+  lattice_vector:
+    - [10.000000000, 0.000000000, 0.000000000]
+    - [0.000000000, 10.000000000, 0.000000000]
+    - [0.000000000, 0.000000000, 10.000000000]
+
+xtb:
+  method: gfn_ff
+  profile: gfn_ff_gradient
+  charge: 0
+  uhf: 0
+  execution_mode: local

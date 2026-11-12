@@ -1,0 +1,48 @@
+version: 1.0
+name: casscf_abinitio_dynamics_test
+# 10-step ab initio MD on the S1 state of C2H4 (no surface hopping).
+# Molcas propagates the nuclei internally: SEWARD..DYNAMIX run inside
+# a FOREACH loop (maxit_md steps); DYNAMIX reads the initial
+# velocities from $Project.velocity.xyz and RASSCF carries MDRLXR.
+
+input:
+  atoms: [C, C, H, H, H, H]
+  coordinates:
+    - [-1.120191050, 0.000000000, -2.661941306]
+    - [-1.120191050, 0.000000000, -1.331783306]
+    - [-1.120191050, 0.923341000, -3.234891306]
+    - [-1.120191050, -0.923341000, -3.234891306]
+    - [-2.043532050, 0.000000000, -0.758833306]
+    - [-0.196850050, 0.000000000, -0.758833306]
+  velocities:
+    - [0.000010, -0.000020, 0.000015]
+    - [-0.000012, 0.000018, -0.000010]
+    - [0.000030, 0.000025, -0.000020]
+    - [-0.000028, -0.000022, 0.000018]
+    - [0.000015, 0.000010, 0.000025]
+    - [-0.000015, -0.000011, -0.000028]
+  charges: 0
+  multiplicity: 1
+  nstate: 2
+  state_spin: [0, 0]
+  profile: casscf_abinitio_dynamics
+  method: casscf
+  basis: ano-s-mb
+  nact_elec: 2
+  nact_orb: 2
+  inactive_orb: 7
+  maxit_md: 10
+  size: 20
+  temperature: 300
+  execution_mode: local
+  current_state: 0
+
+expected:
+  energy:
+    value: null
+    shape: [2]
+    tolerance: 1e-6
+  gradient:
+    value: null
+    shape: [2, 6, 3]
+    tolerance: 1e-6

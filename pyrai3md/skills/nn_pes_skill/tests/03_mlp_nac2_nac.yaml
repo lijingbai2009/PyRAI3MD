@@ -1,0 +1,36 @@
+version: 1.0
+name: nn_pes_nac_test
+# Serve the coupling ensemble case 02 trained. The channels come out in the
+# order `target_nac_pair` asks for, and a pair outside the declared map is an
+# error rather than a zero-filled row.
+
+input:
+  atoms: [C, C, C, C]
+  coordinates:
+    - [-0.3579162, -0.1195850, -0.6005637]
+    - [0.4459637, 0.2589756, -0.1232936]
+    - [-0.9782112, 0.2435791, 0.2176554]
+    - [0.8901638, -0.3829688, 0.5062020]
+  charges: 0
+  multiplicity: 1
+  nstate: 3
+  state_spin: [0, 0, 0]
+  # One spin value per ci state block: three singlet states.
+  ci: [3]
+  spin: [0]
+  # A skill case spells coupling as 0-based typed pairs (the same reading
+  # molcas_skill's cases use); the 1-based form belongs to the classic text.
+  coupling: [[0, 1], [0, 2], [1, 2]]
+  nac_pair_map: [[0, 1], [0, 2], [1, 2]]
+  profile: mlp_nac2_nac
+  method: mlp_nac2
+  execution_mode: local
+  scratch_path: ./tmp
+  # Named here rather than derived: the flat config the skill entry point
+  # reads carries no project, so leaving it out lets the service modes and
+  # the standalone mode write their products into different directories.
+  nn_project: NN_NAC
+  modeldir: ./nn_nac
+  mult_nn: 2
+  target_states: [0, 1, 2]
+  target_nac_pair: [[0, 2], [1, 2]]

@@ -1,0 +1,103 @@
+# Variable-cell relaxation on an excited state, driven by an engine that prints
+# no analytical stress tensor: the case that makes the planning layer and the
+# skill's route resolution meet on a real engine.
+#
+# Run: pyrai3md optimize_cell_cp2k.yaml
+#
+# Nothing here asks for a stress tensor. `optimize_cell: true` is the only
+# request, and `planning/resolver.py::_derive_stress` turns it into the
+# `stress` capability the skill is handed. CP2K refuses an analytical tensor for
+# a TDDFT run ('Stress Tensor not available for TDDFT calculations',
+# response_solver.F:943, measured in rounds tmp_20261010_133424 and
+# tmp_20261010_190544), so a plan that used to arrive at that refusal now
+# resolves to the skill's own strain route (CHANGELOG #355), which returns
+# (nstate, 3, 3) - the shape a box under an excited surface needs. What the
+# engine side has to show for it, read off the artifacts after the round: the
+# input carries no STRESS_TENSOR keyword, the run carries cell columns in
+# opt_status.txt, and its volume moved.
+#
+# The geometry, box and three-state manifold are the ones
+# `tests/tddft_stress_num.yaml` certifies the tensor on, so this case adds the
+# optimizer and nothing else. There `nstate: 3` is written in the case's flat
+# section, which is the skill's own config; here the count is the `ci`/`spin`
+# pair of the system section, because an example's states are propagated to the
+# skill by `Calculator.sync()` and the optimizer section is not a source of them.
+#
+# Cost, measured in the test environment (round tmp_20261016_075328): one optimizer
+# step is thirteen CP2K calls on this system - one unscaled plus twelve strain
+# runs, the six components of the box each at plus and minus the step - and the
+# round got three steps through before the runner's 1200 s backstop stopped the
+# fourth in mid-call. That is no more than 390 s a step, so maxit 4 needed
+# about 1560 s and came back as `Test timed out (1200s)` on both carriers. The
+# ceiling is therefore 2, the pre-agreed response: lower maxit, or close
+# examples.optimize_cell_cp2k in pmd_env.yaml. Widening a threshold to make a
+# measurement fit is not on the table - the artifact size, 4.1 MB per carrier,
+# was never the problem; the two legs did agree to the digit with each other and
+# with the certified ground-state energy on step 1 (-13.56482679723119 Ha).
+control:
+  title: optimize_cell_cp2k_example
+  jobtype: optimize
+  theory: [cp2k]
+
+atoms: [C, C, H, H, H, H]
+coordinates:
+  - [-1.120191050, 0.000000000, -2.661941306]
+  - [-1.120191050, 0.000000000, -1.331783306]
+  - [-1.120191050, 0.923341000, -3.234891306]
+  - [-1.120191050, -0.923341000, -3.234891306]
+  - [-2.043532050, 0.000000000, -0.758833306]
+  - [-0.196850050, 0.000000000, -0.758833306]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+  # The manifold this run solves is declared here, in the system section, and
+  # not under `optimize`: the user's ruling is that the total state count is
+  # the skill's business and the optimizer only selects the state it drives.
+  # Mechanically the manifold lives on the system so `Calculator.sync()` can
+  # hand it to every task config (`SYNC_SYSTEM_FIELDS`, workflow/
+  # calculator.py:129-135: nstate, state_spin, ci), which is what makes the
+  # cp2k schema derive a nonzero `tddft_nstates` at all. Round
+  # tmp_20261015_211219 ran this file with `nstate: 3` written under
+  # `optimize:` and the engine-side guard answered honestly - `TDDFPT profile
+  # 'tddft_gradient' requires at least one excited state (tddft_nstates=0)`.
+  ci: "3"
+  spin: "0"
+  pbc: [1, 1, 1]
+  cell: [10.0, 10.0, 10.0, 90.0, 90.0, 90.0]
+optimize:
+  method: minima
+  maxit: 2
+  opt_energy: 1.0e-4
+  opt_grms: 1.0e-3
+  opt_gmax: 2.0e-3
+  opt_drms: 2.0e-3
+  opt_dmax: 4.0e-3
+  optimize_cell: true
+  # `state_i` is the schema's own name for the state the optimizer drives
+  # (`Optimize.opt_state_i`); the runtime flattener adds the prefix. An
+  # earlier draft of this file wrote `current_state` here, which no model
+  # owns, so the run silently relaxed S0 while claiming an excited surface.
+  state_i: 1
+
+cp2k:
+  method: tddft
+  profile: tddft_gradient
+  functional: pbe0
+  cutoff: 400
+  ref_cutoff: 50
+  execution_mode: local
+  # The strain pool of the `num` stress route: the twelve perturbed points of a
+  # step are independent energy evaluations, and undeclared they run one after
+  # another (`service/stress/num_stress.py:381-385` reads a missing declaration
+  # as serial). Ruled on 2026-10-19: two workers. Not more, because the node
+  # budget this multiplies is `workers x cp2k_nproc x thread` and this
+  # deployment exports MPI_NP 1 / OMP_NUM_THREADS 1 per rank, so a pool of two is
+  # two ranks - a pool of four would be the skill test's shape, not this round's,
+  # where several examples run side by side. Oversubscription is only warned
+  # about, never refused (`_warn_oversubscription`), so the number is a choice
+  # with no guard behind it. What it buys is a round reading, not an extrapolated
+  # one: the serial leg it replaces measured 821 s for two steps on round
+  # tmp_20261019_122659.
+  multitask: true
+  multipool: 2

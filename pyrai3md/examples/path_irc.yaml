@@ -1,0 +1,61 @@
+# Intrinsic reaction coordinate from a transition state, both directions
+# Topology: Dispatcher local / Workflow iterative + batch (curvature) / Calculator local
+# Run: pyrai3md path_irc.yaml
+#
+# What this example is for. `optimize.method: irc` is the MEP walk of
+# path_mep.yaml seeded one `path_radius` away from a transition state along the
+# imaginary mode of its force constants, which is the one direction a saddle's
+# surface actually falls away in. `irc_direction: both` runs one walker per
+# side, so a single run produces the two halves of the reaction path: one into
+# the HCN basin, one into the HNC one. Each branch also gets its own geometry
+# record (`path_forward.xyz`, `path_backward.xyz`) beside the shared ones.
+#
+# Where the mode comes from. `irc_mode: hessian` asks the framework's own
+# Hessian computation for the transition state's force constants, honouring
+# `&hessian hess_driver`/`hess_mode` the way the saddle search does. The
+# computation runs with its analysis off and the modes are read from the atomic
+# block here, because a variable-cell run refuses a vibration analysis outright
+# and the imaginary mode of a reaction path is an atomic mode anyway.
+#
+# The starting geometry is the HCN -> HNC bridging guess the shipped
+# `optimize_ts.yaml` also starts from. Measured on this checkout, that geometry
+# carries exactly one imaginary mode, -1184.09 cm-1 at HF/STO-3G, which is what
+# this walk needs and what `path_imaginary_count` reports.
+#
+# What it needs from the host: PySCF (the same engine for the curvature batch
+# and for the walk).
+
+control:
+  title: path_irc
+  jobtype: optimize
+  theory: [pyscf]
+  driver: main
+
+optimize:
+  method: irc
+  maxit: 6
+  irc_direction: both
+  irc_mode: hessian
+  path_constraint: sphere
+  path_radius: 0.15
+  path_inner_maxit: 12
+  opt_grms: 3e-3
+  opt_gmax: 4.5e-3
+
+hessian:
+  hess_step: 0.01
+
+atoms: [H, C, N]
+coordinates:
+  - [1.150009101, 0.000000000, 0.304989560]
+  - [0.020988521, 0.000000000, 0.038392731]
+  - [-0.021596509, 0.000000000, 1.209028017]
+
+molecule:
+  charges: 0
+  multiplicity: 1
+
+pyscf:
+  method: hf
+  basis: sto3g
+  scratch_path: ./scratch
