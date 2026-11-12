@@ -217,8 +217,8 @@ NewtonX / SHARC / fromage readers and write/read PyRAI3MD trajectories.
 See the manuals under `tools/`.
 
 # User manual
-- PDF manual: link to be added.
-- Online wiki: link to be added.
+- PDF manual: [PyRAI3MD_manual.pdf](manual/PyRAI3MD_manual.pdf)
+- Online manual (GitHub Pages): https://lijingbai2009.github.io/PyRAI3MD/
 
 # Cite us
 PyRAI3MD is the successor of PyRAI2MD. The methods it implements are described in:
