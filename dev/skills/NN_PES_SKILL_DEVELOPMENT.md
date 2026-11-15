@@ -686,7 +686,10 @@ Two readings this table does not support: the coupling numbers come from a
 synthetic field because the real fixture has `nnac = 0`, and that pair of
 runs is a single-stage mean squared error fit, not the production two-stage
 fit that recompiles with the phaseless loss. They show that both stacks
-compute the same thing, not how accurate a coupling surface is.
+compute the same thing, not how accurate a coupling surface is. The
+two-stage path has its own case-level reading since the pair map was fixed
+(10.7): the shipped `02_mlp_nac2_train` case now runs it and completes with
+finite validation errors.
 
 ### 10.3 The version wall
 
@@ -742,8 +745,9 @@ continue to work on the TF backend and were kept.
 3. `optimizer.lr` cannot be read or written before the optimizer is built;
    build it first or use an lr schedule object.
 4. A custom `Loss` returning a scalar zero must return a per-sample zero
-   vector; `NACphaselessLoss` keeps its numeric semantics and was checked
-   axis by axis against the golden run.
+   vector. `NACphaselessLoss` keeps the original per-pair squared error but
+   now builds its candidate set from the state ladder and the declared pairs
+   instead of a channel count (10.7).
 5. Dict outputs plus `loss={'energy':…, 'force':…}` and `loss_weights` are
    matched more strictly; both the dict (training) and list (prediction)
    modes are covered by tests.
@@ -775,7 +779,57 @@ vendored copy.
 | 13 | `nn_pes.py:60` | version banner hard-coded "Tested for tf-gpu= 2.3"; now prints the measured python/tf/keras versions |
 | 14 | `datasets/general.py:74-94` | `data_x`/`data_y` were extension-less pickles; now `np.savez_compressed` |
 
-### 10.7 Known limits of the recorded evidence
+### 10.7 The phaseless loss: state pairs, not a channel count
+
+The ported loss enumerated state phases from `number_state` and then built
+its pair axis with `triu_indices(number_state)`. Those two lengths agree only
+when the channel count happens to equal the complete pair count of the same
+number, so the two-stage fit was usable at exactly three channels. A
+two-state/one-pair fit reached a NaN loss and stopped learning after the
+pre-fit without failing, and a four-state/six-pair fit died with a shape
+error; the shipped case disabled the loss, so nothing caught either.
+
+The contract is now the one the coupling declaration already states:
+
+- `utils/phase.py` builds the complete pair table from `nstate` with the
+  first state fixed at +1, selects the columns of the declared pairs and
+  drops duplicate rows. A pair set with `q` connected components keeps
+  `2**(nstate-q)` candidates, so partial, disconnected and cyclic sets share
+  one path. Tables are cached per `(nstate, ordered pairs)` and read-only.
+- `NACphaselessLoss(number_state, pairs)` computes the two per-pair errors
+  once (`pred-target`, `pred+target`), selects between them through the
+  table, averages over pairs, takes the per-sample minimum and lets Keras
+  average the batch. The error itself remains the original squared error.
+- `ensemble_hyper` writes the electronic ladder as `model.states` (the field
+  the loss reads; `mlp_nac` still derives its width from it) and the declared
+  pairs as `model.nac_pairs`, both from the config's `nac_pair_map`. The two
+  NAC model classes carry `nac_pairs` through `get_config`, so a continuation
+  compares the pair set like any other architectural key.
+- A phaseless request with a channel count but no pair declaration is
+  refused in `trainer.check_phaseless` before a model folder is created, and
+  a folder written before this change is refused inside the fit with a named
+  message instead of a shape error.
+
+Measured on this checkout (CPU, TensorFlow 2.21/Keras 3.15; the first three
+rows are ad hoc 12-frame inline datasets, one member each, three epochs):
+
+| case | channels | phaseless branch | validation error |
+|---|---|---|---|
+| 2 states, 1 pair | 1 | executed | 0.1132 |
+| 4 states, 2 pairs (01, 12) | 2 | executed | 0.1904 |
+| 4 states, 6 pairs | 6 | executed | 0.1541 |
+| `mlp_nac`, 3 states, 3 pairs | 3 | executed | 0.7689 |
+
+Every fit log carries `Recompiling with phaseless loss.` and no `nan`; the
+shipped `02_mlp_nac2_train` case (3 states, `pre_epo: 1`) completes with
+validation errors 0.4310/0.3881 for its two members. The phase tables match
+the documented row counts for full, chain, partial, single-pair and
+triangular sets, and the loss matches a brute-force `2**nstate` enumeration
+to 1e-7 (float32 roundoff) on the full, partial and single-pair cases.
+`tests/test_phase_map.py` covers both, the loss tests skipping with a named
+reason on a host without the optional stack.
+
+### 10.8 Known limits of the recorded evidence
 
 - Only the CPU path was executed: the shipped wheels are CPU-only, so the GPU
   branches in `nn_pes_src/device.py` (visible devices, memory growth) and the

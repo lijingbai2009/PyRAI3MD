@@ -108,7 +108,6 @@ def train_model_nac(i=0, outdir=None, mode='training'):
     # Model
     hypermodel = hyperall['model']
     num_outstates = int(hypermodel['states'])
-    indim = int(hypermodel['atoms'])
     # plots
     # Fit
     hyper = hyperall[mode]
@@ -223,8 +222,16 @@ def train_model_nac(i=0, outdir=None, mode='training'):
     print("Start fit.")
     if phase_less_loss:
         print("Recompiling with phaseless loss.")
+        pairs = hypermodel.get('nac_pairs')
+        if not pairs:
+            raise ValueError(
+                "The model folder carries no coupling pair declaration, so "
+                "a state phase cannot be tied across its channels. Retrain "
+                "the folder with the current skill, or set "
+                "phase_less_loss: no.")
         out_model.compile(
-            loss=NACphaselessLoss(number_state=num_outstates, shape_nac=(indim, 3), name='phaseless_loss'),
+            loss=NACphaselessLoss(number_state=num_outstates, pairs=pairs,
+                                  name='phaseless_loss'),
             optimizer=optimizer,
             metrics=[scaled_metric, lr_metric, r2_metric])
         print("Used loss:", out_model.loss)

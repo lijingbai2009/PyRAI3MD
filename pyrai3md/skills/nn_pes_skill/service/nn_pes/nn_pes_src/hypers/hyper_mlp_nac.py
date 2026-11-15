@@ -16,6 +16,10 @@ DEFAULT_HYPER_PARAM_NAC = {
             'atoms': 2,
             'states': 1,  # (batch,states*(states-1)/2,atoms,3)
             'nnac'  : 1,
+            # Which state pair each coupling channel stands for, in
+            # channel order. Filled by the skill from the declared
+            # coupling pairs; the phaseless loss reads it.
+            'nac_pairs': None,
             'depth': 3,
             'activ': {'class_name': "leaky_softplus", "config": {'alpha': 0.03}},  # activation function,
             'nn_size': 100,

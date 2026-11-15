@@ -31,6 +31,7 @@ class NACModel(keras.Model):
                  atoms,
                  invd_index,
                  nnac=1,
+                 nac_pairs=None,
                  angle_index=None,
                  dihed_index=None,
                  nn_size=100,
@@ -74,6 +75,12 @@ class NACModel(keras.Model):
         # Kept for the serialization round trip; the virtual potential
         # scheme derives its width from the state count
         self.nac_number = int(nnac)
+        # Which state pair each coupling channel stands for, in channel
+        # order. It is not read by the forward pass, but it is what the
+        # phaseless loss needs and what makes the exported model
+        # self-describing.
+        self.nac_pairs = ([list(pair) for pair in nac_pairs]
+                          if nac_pairs else None)
 
 
         out_dim = int(states)
@@ -231,6 +238,7 @@ class NACModel(keras.Model):
             'atoms': self.nac_atoms,
             'states': self.in_states,
             'nnac': self.nac_number,
+            'nac_pairs': self.nac_pairs,
             'invd_index': self.in_invd_index,
             'angle_index': self.in_angle_index,
             'dihed_index': self.in_dihed_index,

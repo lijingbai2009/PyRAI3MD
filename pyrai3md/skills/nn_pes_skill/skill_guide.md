@@ -194,8 +194,8 @@ all three asks the composite `eg_nac_soc`.
 
 ## Coupling channels
 
-A trained network carries a channel count, never a record of which state
-pair each channel means: that is a property of the training data. The
+A trained network folder records both a channel count and the state pair
+each channel stands for (`model.nac_pairs`, copied from `nac_pair_map`). The
 framework owns the declaration. Its `&MOLECULE` spells the pairs as
 `coupling 1 2, 1 3, 2 3` in 1-based state indices and splits them on the
 state spins, and what reaches the skill is the resolved pair of that split:
@@ -206,14 +206,22 @@ The skill reads those maps and nothing else. Taking `coupling` directly
 would put non-adiabatic pairs into the spin-orbit set and shift every state
 index by one. One declared pair is one channel, so nothing is added to
 complete a ladder and no all-pairs traversal invents a width the caller did
-not ask for. A count without a map is honoured, but only in the order the
-model holds its channels; asking for a specific pair then raises rather than
-guessing which channel means it.
+not ask for. A count without a map can still be served, but only in the order
+the model holds its channels; asking for a specific pair then raises rather
+than guessing which channel means it. A phaseless fit refuses such a folder,
+because the loss cannot tie one state's sign across channels it cannot name.
 
-Three agreements are enforced instead of assumed: the training file's channel
+The coupling loss is blind to the arbitrary state phases: a state carries one
+sign in every pair it appears in, and the loss takes the smallest error over
+the legal assignments of the whole ladder. The candidates are built from
+`nstate` and then reduced to the declared pairs, so a partial, disconnected
+or cyclic pair set trains on the same path as a complete one.
+
+Four agreements are enforced instead of assumed: the training file's channel
 count equals the declared one; `mlp_nac`, whose virtual-potential scheme
 builds one output per electronic state, is only accepted for a declaration of
-exactly `nstate` pairs (wider sets need `mlp_nac2`); and at serving the loaded
+exactly `nstate` pairs (wider sets need `mlp_nac2`); a fit with
+`phase_less_loss` on needs the pair declaration; and at serving the loaded
 ensemble's width is compared with the declaration, so a folder trained on one
 pair set cannot be reported under another's state names. A requested pair
 outside the map raises, and channels are never zero-filled, because a

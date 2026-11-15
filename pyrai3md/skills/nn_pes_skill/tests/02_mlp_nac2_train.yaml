@@ -42,4 +42,8 @@ input:
     batch_size: 8
     val_split: 0.25
     epostep: 10
-    phase_less_loss: no
+    # The production fit is two-stage: a short plain-error pre-fit, then a
+    # recompile onto the phaseless loss. One pre-epoch keeps the case short;
+    # the declared three pairs are the full ladder of the three states.
+    phase_less_loss: yes
+    pre_epo: 1

@@ -16,12 +16,12 @@ Shenzhen Polytechnic University
 ======================================================================
 """
 
-import numpy as np
-
 import tensorflow as tf
 
 import keras
 from keras import ops
+
+from .phase import reduced_phase_map
 
 
 class ScaledMeanAbsoluteError(keras.metrics.MeanAbsoluteError):
@@ -171,68 +171,81 @@ def merge_hist(hist1, hist2):
 
 class NACphaselessLoss(keras.losses.Loss):
     """
-    Squared error between couplings that ignores state signs.
+    Squared error between couplings that ignores the arbitrary state signs.
 
     Non adiabatic couplings change sign together with the phase of the
     electronic states they connect, which is arbitrary per quantum
-    chemistry calculation. The loss minimizes over all sign combinations
-    instead of comparing the raw arrays.
+    chemistry calculation. One state phase has to hold across every pair
+    that state appears in, so the candidates are the legal phase assignments
+    of the whole state ladder, not independent per-channel signs.
+
+    The candidates are built once from `number_state` and the declared
+    pairs (see `phase.reduced_phase_map`) and stored as a table of sign
+    choices. Each training step therefore computes only the two per-pair
+    errors and selects between them, which keeps a partial or disconnected
+    pair set on the same path as a complete one.
     """
 
-    def __init__(self, name='phaseless_loss', number_state=2, shape_nac=(1, 1), **kwargs):
+    def __init__(self, name='phaseless_loss', number_state=2, pairs=None,
+                 **kwargs):
         """
-        Initialize the loss and enumerate the sign combinations.
+        Initialize the loss and its phase table.
 
         Args:
             name (str): Loss name.
             number_state (int): Number of electronic states.
-            shape_nac (tuple): Shape of one coupling without batch.
+            pairs (list): State pairs in the order of the coupling channel
+                axis. Directions may be written either way; the sign of a
+                pair does not depend on it.
             **kwargs
+
+        Raises:
+            ValueError: If no pair was declared, or a pair is malformed,
+                repeated or outside the state ladder.
         """
         super(NACphaselessLoss, self).__init__(name=name, **kwargs)
-        self.number_state = number_state
-        self.shape_nac = shape_nac
-
-        phase_stat = np.array([[1], [-1]])
-        for _ in range(number_state - 1):
-            temp_len = len(phase_stat)
-            temp = np.expand_dims(np.array([1] * temp_len + [-1] * temp_len), axis=-1)
-            phase_stat = np.concatenate([phase_stat, phase_stat], axis=0)
-            phase_stat = np.concatenate([phase_stat, temp], axis=-1)
-
-        phase_stat_mat = np.expand_dims(phase_stat, axis=1) * np.expand_dims(phase_stat, axis=-1)
-        idxs = np.triu_indices(number_state, k=1)
-        phase_end = np.unique(phase_stat_mat[..., idxs[0], idxs[1]], axis=0)
-
-        # Expand for broadcasting: combination, batch and the coupling axes
-        phase_end = np.expand_dims(phase_end, axis=1)
-        for _ in range(len(shape_nac)):
-            phase_end = np.expand_dims(phase_end, axis=-1)
-
-        self.phase_combo = tf.constant(phase_end, dtype=keras.backend.floatx())
-        self.reduce_mean = list(range(1, len(shape_nac) + 3))
+        self.number_state = int(number_state)
+        declared = [[int(pair[0]), int(pair[1])] for pair in (pairs or ())]
+        self.pairs = declared
+        table = reduced_phase_map(
+            self.number_state,
+            tuple((pair[0], pair[1]) for pair in declared))
+        self.phase_map = tf.constant(table, dtype=tf.int32)
 
     def call(self, y_true, y_pred):
         """
-        Return the smallest squared error over all sign combinations.
+        Return the smallest squared error over the legal phase assignments.
 
         Args:
-            y_true (tf.tensor): Reference couplings.
-            y_pred (tf.tensor): Predicted couplings.
+            y_true (tf.tensor): Reference couplings, (batch, pairs, ...).
+            y_pred (tf.tensor): Predicted couplings, same shape.
 
         Returns:
-            tf.tensor: Loss value.
-
+            tf.tensor: One loss value per sample.
         """
-        phase_combo = tf.cast(self.phase_combo, y_pred.dtype)
-        se = ops.square(ops.expand_dims(y_true, axis=0) - phase_combo * ops.expand_dims(y_pred, axis=0))
-        mse = ops.mean(se, axis=self.reduce_mean)
-        out = ops.min(mse, axis=0)
-        return out
+        y_true = tf.cast(y_true, y_pred.dtype)
+        layout = tf.shape(y_pred)
+        flat_pred = tf.reshape(y_pred, tf.stack([layout[0], layout[1], -1]))
+        flat_true = tf.reshape(y_true, tf.stack([layout[0], layout[1], -1]))
+
+        # The two sign choices of one pair, reduced over the vector axis.
+        plus = tf.reduce_mean(tf.square(flat_pred - flat_true), axis=-1)
+        minus = tf.reduce_mean(tf.square(flat_pred + flat_true), axis=-1)
+        pair_error = tf.stack([plus, minus], axis=-1)
+
+        # table is (candidate, pair); gather wants the pair axis in front of
+        # the candidate axis and one copy per sample.
+        table = tf.transpose(self.phase_map)
+        index = tf.broadcast_to(
+            table[None],
+            tf.stack([layout[0], tf.shape(table)[0], tf.shape(table)[1]]))
+        selected = tf.gather(pair_error, index, axis=2, batch_dims=2)
+        candidates = tf.reduce_mean(selected, axis=1)
+        return tf.reduce_min(candidates, axis=1)
 
     def get_config(self):
         """Return the config dictionary of the loss instance."""
         config = super(NACphaselessLoss, self).get_config()
         config.update({'number_state': self.number_state,
-                       'shape_nac': self.shape_nac})
+                       'pairs': self.pairs})
         return config

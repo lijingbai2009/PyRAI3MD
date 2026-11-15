@@ -41,10 +41,11 @@ import time
 import numpy as np
 
 from ..schema.hyper import build_member_hyper
-from ..schema.method import (CHANNEL_COUNT, PROFILE_ENSEMBLES, ROLE_ENERGY,
-                             ROLE_NAC, ROLE_SECTIONS, ROLE_SOC)
+from ..schema.method import (PROFILE_ENSEMBLES, ROLE_ENERGY, ROLE_NAC,
+                             ROLE_SECTIONS, ROLE_SOC)
 from ..schema.reference import LABEL_SOC_UNIT
 from . import trainer_data as data_io
+from .nn_pes.utils.phase import reduced_phase_map
 from .runner import get_train_arm
 from .runner.train_runner import failed_runs, run_training
 from .train_record import CHANNEL_TABLE, metric_units
@@ -74,35 +75,6 @@ def targets_for(config):
     return list(PROFILE_ENSEMBLES[config.calculation.profile])
 
 
-def channel_count(config, folder, model_type):
-    """Return how wide an ensemble's output axis has to be.
-
-    The role decides it, and one model family answers two roles: the energy
-    family spans the electronic states in the `energy_grad` folder and the
-    declared spin-orbit pairs in the `soc` folder, because both are one
-    scalar per row.
-
-    Parameters
-    ----------
-    config : SkillConfig
-        Validated configuration.
-    folder : str
-        Ensemble folder name.
-    model_type : str
-        Container model type.
-
-    Returns
-    -------
-    int
-        Number of output channels.
-
-    Raises
-    ------
-    ValueError
-        If the role asks for a count the config does not carry.
-    """
-    key = CHANNEL_COUNT[model_type][folder]
-    return int(getattr(config.system, key))
 
 
 def ensemble_hyper(config, folder, model_type, natom, indices):
@@ -140,11 +112,18 @@ def ensemble_hyper(config, folder, model_type, natom, indices):
     base = get_default_hyperparameters_by_modeltype(model_type)
     base['general']['model_type'] = model_type
     base['model']['atoms'] = int(natom)
-    base['model']['states'] = channel_count(config, folder, model_type)
-    # The coupling networks are the only ones with a separate channel
-    # count, and an energy or gradient network rejects the keyword outright.
+    # The state count is the electronic ladder, in both coupling families:
+    # the phaseless loss enumerates state phases over it, and `mlp_nac`
+    # also derives its virtual-potential width from it. The coupling
+    # channel count is a separate fact that only those families carry.
+    base['model']['states'] = int(config.system.nstate)
     if 'nnac' in base['model']:
         base['model']['nnac'] = int(config.system.nnac)
+        # Which pair each coupling channel stands for, in channel order.
+        # The fit cannot place a state phase without it, and a partial pair
+        # set is read from the same declaration as a complete one.
+        base['model']['nac_pairs'] = [list(pair) for pair in
+                                      (config.system.nac_pair_map or [])]
     base['model']['invd_index'] = indices['invd']
     base['model']['angle_index'] = indices['angle']
     base['model']['dihed_index'] = indices['dihed']
@@ -158,6 +137,53 @@ def ensemble_hyper(config, folder, model_type, natom, indices):
 
     return build_member_hyper(section, base, calculation.mult_nn,
                               dict(getattr(calculation, section) or {}))
+
+
+def check_phaseless(folder, member_hyper, train_mode):
+    """Refuse a phaseless fit whose phase table cannot be built.
+
+    The fit subprocess builds the loss from the hyperparameters alone, so a
+    missing or unusable pair declaration would otherwise surface there as a
+    stack trace after a model folder has already been written. It is caught
+    here instead, before anything is created.
+
+    Parameters
+    ----------
+    folder : str
+        Ensemble folder name.
+    member_hyper : list of dict
+        One hyperparameter dictionary per ensemble member.
+    train_mode : str
+        Hyperparameter category the fit reads ('training' or 'retraining').
+
+    Raises
+    ------
+    ValueError
+        If a member asks for the phaseless loss but the folder carries no
+        pair declaration, or the declaration cannot make a phase table.
+    """
+    for member in member_hyper:
+        category = member.get(train_mode) or {}
+        if not category.get('phase_less_loss'):
+            continue
+        model = member.get('model') or {}
+        pairs = model.get('nac_pairs')
+        if not pairs:
+            raise ValueError(
+                "The %s ensemble is fitted with phase_less_loss, but the "
+                "run declares no coupling pair: without one the sign of "
+                "every channel would be chosen independently, and the "
+                "couplings of one state would not be tied together. "
+                "Declare the pairs in the coupling section, or set "
+                "phase_less_loss: no in the role section." % folder)
+        try:
+            reduced_phase_map(
+                int(model['states']),
+                tuple((int(pair[0]), int(pair[1])) for pair in pairs))
+        except ValueError as error:
+            raise ValueError(
+                "The %s ensemble cannot build its phase table from the "
+                "declared pairs: %s" % (folder, error)) from error
 
 
 def wants_continuation(config, member_hyper):
@@ -303,6 +329,7 @@ def targets_with_data(config, container, folder_root):
         hyper = ensemble_hyper(config, folder, model_type,
                                natom=arrays['xyz'].shape[1],
                                indices=indices)
+        check_phaseless(folder, hyper, config.calculation.train_mode)
         path = os.path.join(folder_root, folder)
         continues = any(wants_continuation(config, member) for member in hyper)
 

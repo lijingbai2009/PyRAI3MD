@@ -23,6 +23,7 @@ class NACModel2(keras.Model):
                  atoms,
                  states,
                  nnac,
+                 nac_pairs=None,
                  invd_index=None,
                  angle_index=None,
                  dihed_index=None,
@@ -67,6 +68,12 @@ class NACModel2(keras.Model):
 
         out_dim = int(nnac)
         self.nac_number = out_dim
+        # Which state pair each coupling channel stands for, in channel
+        # order. The forward pass only needs the width, but the phaseless
+        # loss enumerates state phases over this declaration and an
+        # exported model that carries it stays self-describing.
+        self.nac_pairs = ([list(pair) for pair in nac_pairs]
+                          if nac_pairs else None)
         indim = int(atoms)
 
         # Allow for all distances, backward compatible
@@ -221,6 +228,7 @@ class NACModel2(keras.Model):
         conf.update({
             'atoms': self.y_atoms,
             'nnac': self.nac_number,
+            'nac_pairs': self.nac_pairs,
             'states': self.in_states,
             'invd_index': self.in_invd_index,
             'angle_index': self.in_angle_index,
