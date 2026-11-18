@@ -64,6 +64,15 @@ DEFAULT = {
     # (service/runner/train_runner.py), the rule an MD run uses per trajectory.
     'gl_seed': 1,
     'train_mode': 'training',
+    # Permute the training frames once before they are staged to disk. The
+    # fit takes its validation set from the head of the dataset, so an
+    # unshuffled file hands it whichever frames its producer wrote first
+    # (often a contiguous trajectory). The permutation is drawn from
+    # gl_seed, which is what keeps a rerun - and a retraining continuation
+    # that re-stages the data - on the same validation frames. It is a
+    # one-time staging reorder, not the per-epoch batch shuffle, which
+    # Keras already does.
+    'shuffle': False,
     # Ensemble size. This is what decides how many member groups of a
     # hyperparameter are read: fewer broadcast, surplus are ignored.
     'mult_nn': 2,
@@ -187,6 +196,7 @@ class Calculation(BaseModel):
     pred_data: str = DEFAULT['pred_data']
     gl_seed: int = DEFAULT['gl_seed']
     train_mode: str = DEFAULT['train_mode']
+    shuffle: bool = DEFAULT['shuffle']
     # Post-fit prediction spread on the training frames (training and
     # prediction only; the serving path never reads it).
     predict_std: int = DEFAULT['predict_std']

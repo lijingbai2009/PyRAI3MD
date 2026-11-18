@@ -562,7 +562,8 @@ def targets_for_role(role, model_type, arrays):
     return [arrays['energy'], arrays['grad']]
 
 
-def write_to_folder(container, name, folder, role, model_type, arrays):
+def write_to_folder(container, name, folder, role, model_type, arrays,
+                    shuffle=False, seed=None):
     """Write the pickled data the training subprocess reads.
 
     Parameters
@@ -579,8 +580,21 @@ def write_to_folder(container, name, folder, role, model_type, arrays):
         Container model type.
     arrays : dict
         Normalized arrays.
+    shuffle : bool
+        Permute the frames before they are saved. The fit holds out the
+        head of the dataset for validation, so the order decides which
+        frames are never trained on; the default keeps the producer's
+        order.
+    seed : int or None
+        Seed of the permutation. A fixed seed is what makes a rerun and a
+        retraining continuation stage the same order, and therefore the
+        same validation frames.
     """
     from .nn_pes.datasets.general import model_save_data_to_folder
     x = arrays['xyz']
     y = targets_for_role(role, model_type, arrays)
-    model_save_data_to_folder(x, y, name, folder, False)
+    index = None
+    if shuffle:
+        index = np.random.default_rng(seed).permutation(len(x))
+    model_save_data_to_folder(x, y, name, folder, shuffle,
+                              shuffle_ind=index)

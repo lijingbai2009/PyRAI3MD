@@ -53,7 +53,8 @@ def make_random_shuffle(datalist, shuffle_ind=None):
     return allind, outlist
 
 
-def save_data_to_folder(x, y, target_model, mod_dir, random_shuffle):
+def save_data_to_folder(x, y, target_model, mod_dir, random_shuffle,
+                        shuffle_ind=None):
     """
     Save all training data for model mlp_eg to folder.
 
@@ -63,6 +64,10 @@ def save_data_to_folder(x, y, target_model, mod_dir, random_shuffle):
         target_model (str): Name of the Model to save data for.
         mod_dir (str): Path of model directory.
         random_shuffle (bool, optional): Whether to shuffle data before save. The default is False.
+        shuffle_ind (np.array, optional): Permutation to apply when random_shuffle is
+            set. A caller that needs a reproducible order (the skill seeds it from the
+            run's gl_seed) hands the index over instead of letting this function draw
+            one from the global random state. The default is None.
 
     Returns:
         None.
@@ -80,7 +85,7 @@ def save_data_to_folder(x, y, target_model, mod_dir, random_shuffle):
         else:
             shuffle_list = [x] + [y]
         # Make random shuffle
-        ind_shuffle, datalist = make_random_shuffle(shuffle_list)
+        ind_shuffle, datalist = make_random_shuffle(shuffle_list, shuffle_ind)
         x_out = datalist[0]
         if len(datalist) > 2:
             y_out = datalist[1:]
@@ -202,7 +207,8 @@ def model_merge_data_in_chunks(mx1, my1, mx2, my2, val_split=0.1):
 def model_save_data_to_folder(x, y,
                               target_model,
                               mod_dir,
-                              random_shuffle=False):
+                              random_shuffle=False,
+                              shuffle_ind=None):
     """
     Save Data to model folder. Always dumps data_x and data_y as pickle.
 
@@ -212,11 +218,14 @@ def model_save_data_to_folder(x, y,
         target_model (str): Name of the Model to save data for.
         mod_dir (str): Path of model directory.
         random_shuffle (bool, optional): Whether to shuffle data before save. The default is False.
+        shuffle_ind (np.array, optional): Permutation to apply when random_shuffle is
+            set; None draws one from the global random state. The default is None.
 
     Returns:
         None.
     """
-    return save_data_to_folder(x, y, target_model, mod_dir, random_shuffle)
+    return save_data_to_folder(x, y, target_model, mod_dir, random_shuffle,
+                               shuffle_ind)
 
 
 def save_hyp(hyperparameter, filepath):

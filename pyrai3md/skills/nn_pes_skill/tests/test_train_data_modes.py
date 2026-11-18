@@ -121,6 +121,23 @@ class TestSchema(unittest.TestCase):
         self.assertIn('train_dataset', DEFAULT)
         self.assertEqual(DEFAULT['train_dataset'], {})
 
+    def test_default_registers_the_shuffle_key(self):
+        # The config builder keeps only registered fields, so a keyword
+        # missing from DEFAULT is dropped before the backend sees it.
+        self.assertIn('shuffle', DEFAULT)
+        self.assertFalse(DEFAULT['shuffle'])
+
+    def test_shuffle_is_accepted(self):
+        config = validate(normalize(_base(_raw(EGS), train_data=EGS,
+                                          shuffle=True)))
+        self.assertTrue(config.calculation.shuffle)
+
+    def test_the_classic_true_spelling_is_read_as_a_switch(self):
+        # The text input keeps the raw string, so the schema field has to
+        # fold 'true' the way the classic dialect writes it.
+        self.assertIs(build_config({'shuffle': 'true'}).calculation.shuffle,
+                      True)
+
     def test_inline_only_is_accepted(self):
         config = validate(normalize(_base(_raw(EGS),
                                           train_dataset=_raw(EGS))))

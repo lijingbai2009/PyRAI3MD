@@ -70,6 +70,7 @@ CASE = {
                  'coupling': '1 2, 1 3, 2 3'},
     'nn': {'modeldir': './tmp/nn_models', 'mult_nn': 2, 'gpu': '-1',
            'train_data': './training.json', 'train_mode': 'training',
+           'shuffle': True,
            'soc': {'epo': '900;700', 'batch_size': 16},
            # The role section is a keyword block of the skill, nested in
            # the yaml the way every skill section is. In the classic input
@@ -85,8 +86,8 @@ CASE = {
 
 # Fields this contract is about: the shared block, the role section, and
 # the state bookkeeping the role section is read against.
-_KEYS = ('modeldir', 'mult_nn', 'train_data', 'train_mode', 'gpu',
-         'eg', 'nac', 'soc', 'nstate', 'nnac', 'nsoc',
+_KEYS = ('modeldir', 'mult_nn', 'train_data', 'train_mode', 'shuffle',
+         'gpu', 'eg', 'nac', 'soc', 'nstate', 'nnac', 'nsoc',
          'nac_pair_map', 'soc_pair_map', 'profile', 'method')
 
 # The hyperparameter subset whose member axis is compared, as written into
@@ -215,6 +216,16 @@ class TestNnPesThreeCarrierInput(unittest.TestCase):
                                      '%s differs between yaml and input' % key)
                     self.assertEqual(values['agent'], values['yaml'],
                                      '%s differs between yaml and agent' % key)
+
+    def test_the_shuffle_switch_survives_every_carrier(self):
+        # Agreement alone is not enough: an unregistered keyword is dropped
+        # by every carrier and they would still agree on the default. The
+        # value the case wrote must be the value the skill reads.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for label in ('yaml', 'input', 'agent'):
+                config, _raw = self._config_for_mode(label, tmpdir)
+                self.assertTrue(config.calculation.shuffle,
+                                '%s mode dropped the shuffle switch' % label)
 
     def test_member_axis_means_the_same_in_every_mode(self):
         with tempfile.TemporaryDirectory() as tmpdir:

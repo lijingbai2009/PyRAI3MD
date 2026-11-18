@@ -320,11 +320,20 @@ agreed surface.
 
 Shared block (`&nn`): `modeldir`, `train_data` (a file name),
 `train_dataset` (the same data as an inline mapping), `train_mode`,
-`mult_nn`, `gpu`, `eg`, `nac`, `soc`. Exactly one of `train_data` /
-`train_dataset` is set for a training request; both reach the same
-reader. The inline form is what the framework writes when it expands
+`shuffle`, `mult_nn`, `gpu`, `eg`, `nac`, `soc`. Exactly one of
+`train_data` / `train_dataset` is set for a training request; both reach
+the same reader. The inline form is what the framework writes when it expands
 `&train permutation_map` before the backend is initialized, so a map is
 never read here.
+
+`shuffle: true` permutes the training frames once, before they are staged
+to the model folder. The fit holds out the head of the dataset for
+validation, so without the shuffle the validation frames are whichever
+ones the producer wrote first (often one contiguous trajectory). The
+permutation is drawn from `gl_seed`, so a rerun stages the same order and
+a `retraining` continuation that re-stages the data keeps the same
+validation frames. It is a staging reorder, not the per-epoch batch
+shuffle, which the fit already does on its own.
 
 `gpu` is a device list: one index per ensemble member, separated by `;`,
 and one value broadcasts to every member. It is not the original project's
