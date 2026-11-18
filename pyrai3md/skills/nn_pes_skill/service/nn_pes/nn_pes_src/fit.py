@@ -90,7 +90,7 @@ def child_environment(thread=None):
     return environment
 
 
-def train_command(model_type, i, filepath, g, m, seed=None):
+def train_command(model_type, i, filepath, g, m, seed=None, shuffle=True):
     """
     Build the subprocess command line of one training instance.
 
@@ -113,20 +113,25 @@ def train_command(model_type, i, filepath, g, m, seed=None):
             (``workflow/md.py`` seeds with ``gl_seed + trajectory``), because
             every member of an ensemble that drew the same numbers would be
             the same network. None leaves the child unseeded, as before.
+        shuffle (bool, optional): Whether the fit shuffles the sample order
+            of every epoch (Keras ``model.fit(shuffle=...)``). It travels as
+            ``-u 1``/``-u 0`` in front of the seed, so the seed stays the
+            last pair of the line.
 
     Returns:
         list: Command line for subprocess.
 
     """
     command = [sys.executable, "-m", get_module_for_fit_script(model_type),
-               "-i", str(i), "-f", filepath, "-g", str(g), "-m", str(m)]
+               "-i", str(i), "-f", filepath, "-g", str(g), "-m", str(m),
+               "-u", "1" if shuffle else "0"]
     if seed is not None:
         command += ["-s", str(int(seed))]
     return command
 
 
 def fit_model_by_modeltype(model_type, dist_method, i, filepath, g, m,
-                           seed=None, thread=None):
+                           seed=None, thread=None, shuffle=True):
     """
     Run a training module for one network instance.
 
@@ -138,6 +143,10 @@ def fit_model_by_modeltype(model_type, dist_method, i, filepath, g, m,
         g (int): GPU index to use.
         m (str): Fitmode.
         seed (int, optional): RNG seed carried to the child as `-s`.
+        thread (int, optional): Thread budget carried through the child
+            environment.
+        shuffle (bool, optional): Whether the fit shuffles its sample order
+            every epoch, carried to the child as `-u 1`/`-u 0`.
 
     Returns:
         object: Popen instance for asynchronous runs, otherwise the
@@ -145,7 +154,8 @@ def fit_model_by_modeltype(model_type, dist_method, i, filepath, g, m,
 
     """
     print("Run:", filepath, "Instance:", i, "on GPU:", g, m)
-    command = train_command(model_type, i, filepath, g, m, seed)
+    command = train_command(model_type, i, filepath, g, m, seed,
+                            shuffle=shuffle)
     environment = child_environment(thread)
     if dist_method:
         return subprocess.Popen(command, env=environment)

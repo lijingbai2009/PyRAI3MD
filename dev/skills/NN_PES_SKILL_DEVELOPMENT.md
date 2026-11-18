@@ -345,16 +345,16 @@ data.
 Every ML method shares the settings that are not about a network: where
 the models live (`modeldir`), where the data comes from (`train_data`,
 a file name, or `train_dataset`, the same mapping inline), whether the
-run fits or refits (`train_mode`), whether the staged frames are permuted
-before the fit (`shuffle`, default off, seeded from `gl_seed`), how many
-members an ensemble has (`mult_nn`), and which device each training
-subprocess gets (`gpu`, a `;` list of device indices that broadcasts from
-a single value).
-`shuffle: true` reorders the frames once, when the data is written to the
-model folder (`service/trainer_data.py:write_to_folder`): the fit holds
-out the head of the dataset for validation, so without it those frames are
-whichever ones the producer wrote first. It is not the per-epoch batch
-shuffle, which the fit does itself.
+run fits or refits (`train_mode`), whether each epoch shuffles its sample
+order (`shuffle`, default on, Keras's own default), how many members an
+ensemble has (`mult_nn`), and which device each training subprocess gets
+(`gpu`, a `;` list of device indices that broadcasts from a single value).
+`shuffle` travels to each member's child as `-u 1`/`-u 0`
+(`service/runner/train_runner.py` -> `nn_pes_src/fit.py:train_command`)
+and is handed to `model.fit(shuffle=...)` in every training module; a
+dataset that was shuffled before it was staged sets it to false to keep
+the batches in file order. It never reorders the staged frames, so the
+train/validation split is unaffected.
 Exactly one of `train_data` / `train_dataset` is set
 (`schema/validate.py`); both modes reach one reader
 (`service/trainer_data.py:from_payload`, `load`). The inline form exists

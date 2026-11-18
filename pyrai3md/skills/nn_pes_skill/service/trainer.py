@@ -367,9 +367,7 @@ def targets_with_data(config, container, folder_root):
             container.save(folder)
 
         data_io.write_to_folder(container, folder, path, folder,
-                               model_type, arrays,
-                               shuffle=bool(config.calculation.shuffle),
-                               seed=config.calculation.gl_seed)
+                               model_type, arrays)
         prepared.append((folder, model_type, path))
     return prepared, arrays
 

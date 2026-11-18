@@ -57,11 +57,13 @@ def build_jobs(config, targets):
     # times is not an ensemble. Same rule an MD run uses for its trajectories
     # (workflow/md.py seeds `gl_seed + trajectory index`).
     gl_seed = getattr(config.calculation, 'gl_seed', None)
+    shuffle = bool(config.calculation.shuffle)
     for name, model_type, folder in targets:
         for index in range(members):
             seed = None if gl_seed is None else int(gl_seed) + index
             command = train_command(model_type, index, folder,
-                                    int(devices[index]), mode, seed)
+                                    int(devices[index]), mode, seed,
+                                    shuffle=shuffle)
             jobs.append({
                 'name': name,
                 'model_type': model_type,

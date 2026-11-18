@@ -64,15 +64,13 @@ DEFAULT = {
     # (service/runner/train_runner.py), the rule an MD run uses per trajectory.
     'gl_seed': 1,
     'train_mode': 'training',
-    # Permute the training frames once before they are staged to disk. The
-    # fit takes its validation set from the head of the dataset, so an
-    # unshuffled file hands it whichever frames its producer wrote first
-    # (often a contiguous trajectory). The permutation is drawn from
-    # gl_seed, which is what keeps a rerun - and a retraining continuation
-    # that re-stages the data - on the same validation frames. It is a
-    # one-time staging reorder, not the per-epoch batch shuffle, which
-    # Keras already does.
-    'shuffle': False,
+    # Whether the fit shuffles the sample order of every epoch (the
+    # `shuffle` argument of Keras model.fit; the default keeps Keras's
+    # own default). A dataset that was already shuffled before it was
+    # written can turn this off to keep the batches in file order, which
+    # is what a run that needs a reproducible batch sequence asks for.
+    # It does not touch the order the frames are staged in.
+    'shuffle': True,
     # Ensemble size. This is what decides how many member groups of a
     # hyperparameter are read: fewer broadcast, surplus are ignored.
     'mult_nn': 2,

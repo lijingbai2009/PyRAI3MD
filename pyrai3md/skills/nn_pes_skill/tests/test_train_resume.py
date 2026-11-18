@@ -164,7 +164,7 @@ class ContinuationCase(unittest.TestCase):
                       handle)
 
     def _config(self, mode='training', initialize_weights=None,
-                model=None, **extra):
+                model=None):
         from pyrai3md.skills.nn_pes_skill.schema.adapter import build_config
         from pyrai3md.skills.nn_pes_skill.schema.normalize import normalize
         from pyrai3md.skills.nn_pes_skill.schema.validate import validate
@@ -181,7 +181,6 @@ class ContinuationCase(unittest.TestCase):
         }
         if model:
             raw['eg'].update(model)
-        raw.update(extra)
         return validate(normalize(build_config(raw)))
 
     def _fill_folder(self, members=1, skip=()):
@@ -251,19 +250,6 @@ class TestCallOrder(ContinuationCase):
         self._prepare(container, self._config(mode='training',
                                               initialize_weights=False))
         self.assertEqual(['load', 'update', 'save'], container.calls)
-
-    def test_the_shuffle_switch_and_seed_reach_the_staged_data(self):
-        # The staging writer is the only consumer of the switch, and the
-        # permutation seed is the run's gl_seed, so a rerun stages the same
-        # order (and therefore the same validation frames).
-        container = _Recorder(self.model_root)
-        config = self._config(shuffle=True)
-        self.assertTrue(config.calculation.shuffle)
-        self._prepare(container, config)
-        staged = trainer.data_io.write_to_folder.call_args
-        self.assertTrue(staged.kwargs['shuffle'])
-        self.assertEqual(staged.kwargs['seed'],
-                         config.calculation.gl_seed)
 
 
 class TestRefusals(ContinuationCase):

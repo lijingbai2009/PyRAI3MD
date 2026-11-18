@@ -123,9 +123,16 @@ class TestSchema(unittest.TestCase):
 
     def test_default_registers_the_shuffle_key(self):
         # The config builder keeps only registered fields, so a keyword
-        # missing from DEFAULT is dropped before the backend sees it.
+        # missing from DEFAULT is dropped before the backend sees it. The
+        # default is Keras's own (shuffle on); a dataset that was already
+        # shuffled before staging turns it off.
         self.assertIn('shuffle', DEFAULT)
-        self.assertFalse(DEFAULT['shuffle'])
+        self.assertTrue(DEFAULT['shuffle'])
+
+    def test_shuffle_can_be_turned_off(self):
+        config = validate(normalize(_base(_raw(EGS), train_data=EGS,
+                                          shuffle=False)))
+        self.assertFalse(config.calculation.shuffle)
 
     def test_shuffle_is_accepted(self):
         config = validate(normalize(_base(_raw(EGS), train_data=EGS,
@@ -137,6 +144,8 @@ class TestSchema(unittest.TestCase):
         # fold 'true' the way the classic dialect writes it.
         self.assertIs(build_config({'shuffle': 'true'}).calculation.shuffle,
                       True)
+        self.assertIs(build_config({'shuffle': 'false'}).calculation.shuffle,
+                      False)
 
     def test_inline_only_is_accepted(self):
         config = validate(normalize(_base(_raw(EGS),

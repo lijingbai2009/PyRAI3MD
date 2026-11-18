@@ -132,6 +132,29 @@ class TestOneProcessPerMember(unittest.TestCase):
             self.assertEqual(job['command'][job['command'].index('-g') + 1],
                              '-1')
 
+    def test_the_batch_shuffle_switch_reaches_every_command(self):
+        # One value per run, not per member: the switch decides whether the
+        # fit shuffles its sample order every epoch.
+        jobs = build_jobs(make_config(mult_nn=2),
+                          [('energy_grad', 'mlp_eg', '/tmp/models/eg')])
+        values = [job['command'][job['command'].index('-u') + 1]
+                  for job in jobs]
+        self.assertEqual(values, ['1', '1'])
+        jobs = build_jobs(make_config(mult_nn=2, shuffle=False),
+                          [('energy_grad', 'mlp_eg', '/tmp/models/eg')])
+        values = [job['command'][job['command'].index('-u') + 1]
+                  for job in jobs]
+        self.assertEqual(values, ['0', '0'])
+
+    def test_the_seed_stays_the_last_pair_behind_the_shuffle_switch(self):
+        # The cluster arm writes the line verbatim, so the append order is
+        # part of the contract the seed tests read (command[-2:] == -s N).
+        command = train_command('mlp_eg', 0, '/tmp/m', -1, 'training', 5)
+        self.assertEqual(command[-4:], ['-u', '1', '-s', '5'])
+        command = train_command('mlp_eg', 0, '/tmp/m', -1, 'training', 5,
+                                shuffle=False)
+        self.assertEqual(command[-4:], ['-u', '0', '-s', '5'])
+
 
 class TestArmsShareOneCommand(unittest.TestCase):
 

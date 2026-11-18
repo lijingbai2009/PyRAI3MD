@@ -47,6 +47,9 @@ def parse_args(argv=None):
     parser.add_argument("-s", "--seed", type=int, default=None,
                         help="RNG seed of this instance: the framework sends its\n"
                              "control gl_seed advanced by the member index")
+    parser.add_argument("-u", "--shuffle", type=int, choices=(0, 1), default=1,
+                        help="Shuffle the sample order of every epoch: 1 keeps\n"
+                             "Keras's default, 0 fits the batches in file order")
     return vars(parser.parse_args(argv))
 
 def load_data(outdir):
@@ -70,7 +73,7 @@ def load_data(outdir):
         print("Error: Can not load data for fit", outdir)
         return None, None
 
-def train_model_nac(i=0, outdir=None, mode='training'):
+def train_model_nac(i=0, outdir=None, mode='training', shuffle=True):
     """
     Train NAC model. Uses precomputed feature and model representation.
 
@@ -78,6 +81,8 @@ def train_model_nac(i=0, outdir=None, mode='training'):
         i (int, optional): Model index. The default is 0.
         outdir (str, optional): Direcotry for fit output. The default is None.
         mode (str, optional): Fitmode to take from hyperparameters. The default is 'training'.
+        shuffle (bool, optional): Shuffle each epoch's sample order (Keras
+            model.fit). The default is True.
 
     Raises:
         ValueError: Wrong input shape.
@@ -214,7 +219,7 @@ def train_model_nac(i=0, outdir=None, mode='training'):
         print("Start Pre-fit without phaseless-loss.")
         print("Used loss:", out_model.loss)
         out_model.summary()
-        out_model.fit(x=xtrain, y=ytrain, epochs=pre_epo, batch_size=batch_size, verbose=2)
+        out_model.fit(x=xtrain, y=ytrain, epochs=pre_epo, batch_size=batch_size, shuffle=shuffle, verbose=2)
         print("End fit.")
         print("")
 
@@ -236,7 +241,7 @@ def train_model_nac(i=0, outdir=None, mode='training'):
         print("Used loss:", out_model.loss)
 
     out_model.summary()
-    hist = out_model.fit(x=xtrain, y=ytrain, epochs=epo, batch_size=batch_size, callbacks=cbks, validation_freq=epostep,
+    hist = out_model.fit(x=xtrain, y=ytrain, epochs=epo, batch_size=batch_size, shuffle=shuffle, callbacks=cbks, validation_freq=epostep,
                          validation_data=(xval, yval), verbose=2)
     print("End fit.")
     print("")
@@ -316,7 +321,8 @@ def main(argv=None):
             try:
                 fitted = train_model_nac(args['index'],
                                          args['filepath'],
-                                         args['mode'])
+                                         args['mode'],
+                                         shuffle=bool(args['shuffle']))
                 if fitted is None:
                     print("Fit produced no validation error: the training data, "
                           "hyper or scaler did not load for", args['filepath'])

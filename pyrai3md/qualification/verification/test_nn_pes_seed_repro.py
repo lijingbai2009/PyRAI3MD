@@ -147,6 +147,36 @@ class TestTheSeedOnTheCommandLine(unittest.TestCase):
             self.assertEqual(args['seed'], 5,
                              msg='%s does not read -s' % model_type)
 
+    def test_every_training_module_carries_the_batch_shuffle_switch(self):
+        """The same registry arm for `-u`: read it, and hand it to the fit.
+
+        A module that parsed the switch and ignored it would train with
+        Keras's default while the run asked for file order, which is the
+        failure the switch exists to prevent. The default stays 1 (Keras's
+        own), so a run that says nothing keeps the behaviour it had.
+        """
+        import importlib
+        import inspect
+
+        for model_type in sorted(FIT_MODULES):
+            module = importlib.import_module(
+                get_module_for_fit_script(model_type))
+            source = inspect.getsource(module)
+            self.assertIn("shuffle=bool(args['shuffle'])", source,
+                          msg='%s does not pass -u into its fit' % model_type)
+            self.assertIn('shuffle=shuffle', source,
+                          msg='%s does not hand the switch to model.fit'
+                              % model_type)
+            args = module.parse_args(['-i', '0', '-f', '/tmp/m', '-g', '-1',
+                                      '-m', 'training', '-u', '0'])
+            self.assertEqual(args['shuffle'], 0,
+                             msg='%s does not read -u' % model_type)
+            default = module.parse_args(['-i', '0', '-f', '/tmp/m', '-g',
+                                         '-1', '-m', 'training'])
+            self.assertEqual(default['shuffle'], 1,
+                             msg='%s changed the Keras default silently'
+                                 % model_type)
+
 
 
 
