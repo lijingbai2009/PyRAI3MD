@@ -372,51 +372,42 @@ def targets_with_data(config, container, folder_root):
     return prepared, arrays
 
 
-def physical_errors(container, folder, model_type, members):
-    """Put a member's validation error back into units a reader can use.
+def physical_errors(folder, model_type, members):
+    """Put a member's validation error into units a reader can use.
 
-    The fit stores its error in the scaled units of its own normalizer,
-    where a number means nothing: 0.02 is neither a milli-Hartree nor a
-    milli-eV until the spread the data was divided by is put back. That
-    spread is read from the scaler the folder was fitted with, not from a
-    re-derived guess, and the result is printed in the units the container
-    declares for its own plots, eV and eV/Angstrom, because those are what
-    a chemist compares against. A spin-orbit folder is the exception: its
-    labels are cm-1 and stay cm-1.
+    The fit stores its error already in physical units: the training
+    scripts inverse-transform the predictions before comparing them
+    with the raw labels, so a stored value is Hartree for energy and
+    Hartree/Angstrom for the derivatives. Only the unit conversion to
+    the printed metric remains, eV and eV/Angstrom, because those are
+    what a chemist compares against. A spin-orbit folder is the
+    exception: its labels are cm-1 and stay cm-1.
 
     Parameters
     ----------
-    container : object
-        Container with the ensemble loaded.
     folder : str
         Ensemble folder name, which decides the channel it reports.
     model_type : str
         Container model type.
     members : list
-        Per-member stored error in the fit's scaled units.
+        Per-member stored error in the fit's physical units.
 
     Returns
     -------
     dict
         Channel name to one value per member, in metric units.
     """
-    # channel, scaler attribute, factor from the fit's unit to the metric
+    # channel, factor from the fit's unit to the metric
     table = CHANNEL_TABLE[folder][model_type]
-    scalers = (getattr(container, '_models_scaler', None) or {}).get(folder)
 
     reported = {}
-    for position, (channel, spread, factor) in enumerate(table):
+    for position, (channel, factor) in enumerate(table):
         values = []
-        for index, stored in enumerate(members):
+        for stored in members:
             entries = np.atleast_1d(np.asarray(stored, dtype=np.float64))
             value = (float(entries[position]) if entries.size > position
                      else float(entries))
-            scale = 1.0
-            if scalers and index < len(scalers):
-                width = getattr(scalers[index], spread, None)
-                if width is not None:
-                    scale = float(np.mean(np.abs(np.asarray(width))))
-            values.append(value * scale * factor)
+            values.append(value * factor)
         reported[channel] = values
     return reported
 
@@ -641,8 +632,7 @@ def run(config, container, calcdir):
              for name, model_type, _folder in targets]
     container.load([name for name, _type in names])
     stored = {name: container._read_fit_error(name) for name, _type in names}
-    errors = {folder: physical_errors(container, folder, model_type,
-                                      stored[folder])
+    errors = {folder: physical_errors(folder, model_type, stored[folder])
               for folder, model_type in names}
     units = metric_units(sorted({channel
                                  for channels in errors.values()

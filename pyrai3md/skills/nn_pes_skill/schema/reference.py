@@ -60,9 +60,10 @@ LABEL_GRADIENT_UNIT = 'hartree/bohr'
 LABEL_SOC_UNIT = 'cm-1'
 
 # The units the training metrics are printed in. A validation error is
-# stored in the scaled units of the fit, so it is converted back through the
-# scaler before anyone reads it (service/trainer.py:physical_errors), and
-# eV and eV/Angstrom are what a chemist compares against.
+# stored in the fit's physical units (Hartree, Hartree/Angstrom, cm-1),
+# so only the unit conversion is applied before anyone reads it
+# (service/trainer.py:physical_errors), and eV and eV/Angstrom are what
+# a chemist compares against.
 METRIC_ENERGY_UNIT = 'eV'
 METRIC_GRADIENT_UNIT = 'eV/angstrom'
 METRIC_SOC_UNIT = 'cm-1'

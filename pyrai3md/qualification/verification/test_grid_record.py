@@ -224,8 +224,8 @@ class TestFolderReading(_FolderCase):
 
         errors, units, reason = disk_errors(self.context, directory)
         self.assertEqual('', reason)
-        # The stored error is in the fit's scaled units; the scaler spread
-        # (1.0 here) and the Hartree-to-eV factor put it back.
+        # The stored error is already in the fit's physical units
+        # (Hartree, Hartree/Angstrom); only the unit factor applies.
         self.assertAlmostEqual(0.1 * HARTREE_TO_EV,
                                errors['energy_grad']['energy'][0])
         self.assertAlmostEqual(0.2 * HARTREE_TO_EV,
@@ -247,7 +247,7 @@ class TestFolderReading(_FolderCase):
                                              self._modeldir(point))
         self.assertIn('no model directory', reason)
 
-    def test_a_spread_is_applied_per_member(self):
+    def test_the_scaler_spread_does_not_rescale_the_stored_error(self):
         from pyrai3md.skills.nn_pes_skill.schema.reference import HARTREE_TO_EV
 
         point = self._point(depth=5)
@@ -260,11 +260,13 @@ class TestFolderReading(_FolderCase):
                                1: {'energy_std': [[0.5]],
                                    'gradient_std': [[[1.0]]]}})
         errors, _units, _reason = disk_errors(self.context, directory)
-        # Each member is unscaled by its own stored spread (2.0 and 0.5)
-        # and then into eV: the same arithmetic the fit report uses.
+        # The fit inverse-transforms its predictions before storing the
+        # error, so the stored value is already physical. The deliberately
+        # different per-member spreads (2.0 and 0.5) must not touch it:
+        # multiplying them in once double-scaled every reported MAE.
         values = errors['energy_grad']['energy']
-        self.assertAlmostEqual(0.1 * 2.0 * HARTREE_TO_EV, values[0], places=9)
-        self.assertAlmostEqual(0.2 * 0.5 * HARTREE_TO_EV, values[1], places=9)
+        self.assertAlmostEqual(0.1 * HARTREE_TO_EV, values[0], places=9)
+        self.assertAlmostEqual(0.2 * HARTREE_TO_EV, values[1], places=9)
 
 
 class TestRanking(_FolderCase):
